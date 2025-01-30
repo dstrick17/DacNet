@@ -1,8 +1,7 @@
 # Deep-Learning-Project
-DS542 final project
 
-## Deep Learning is so cool
+## Everyone will make their own branch and merge to the dev branch
 
-#### I wish I was as cool as Deep Learning
+#### We can also make branches for specific features such as data engineering, data analysis, and model building
 
 
