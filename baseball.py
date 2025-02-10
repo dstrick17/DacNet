@@ -17,8 +17,7 @@ print(player_info)
 statcast_data = pybaseball.statcast()
 print(statcast_data.head(5))
 
-
-# Fethc data sate
+# Fetch data sate
 statcast_data = statcast(start_date, end_date)
 
 
