@@ -4,23 +4,26 @@ from pybaseball import statcast
 from pybaseball import playerid_lookup
 import pandas as pd
 # Enable caching
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 1000)
 pybaseball.cache.enable()
 start_date = "2023-06-01"
 end_date = "2023-06-07"
+player_id = 624413  # Pete Alonso MLB ID
 
-player_info = playerid_lookup("Alonso", "Pete")
-print(player_info)
+# player_info = playerid_lookup("Alonso", "Pete")
+# print(player_info)
 
-# Pete Alonso MLB ID (key_mlbam is 624413)
+# statcast_data = pybaseball.statcast() # Stat cast is by pitch
 
-# Use the statcast function and access the head of the resulting DataFrame
-statcast_data = pybaseball.statcast()
-print(statcast_data.head(5))
+season2024_batting_stats = pybaseball.batting_stats_bref(2024)
+mets_batting_stats = season2024_batting_stats[(season2024_batting_stats['Lev'] == 'Maj-NL') & (season2024_batting_stats['Tm'] == 'New York')]
+print(mets_batting_stats)
 
-# Fetch data sate
-statcast_data = statcast(start_date, end_date)
-
+print(season2024_batting_stats.columns)
 
 
-# Display first few rows
-#print(statcast_data.head())
+
+
+
+
