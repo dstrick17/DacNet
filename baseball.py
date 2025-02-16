@@ -7,8 +7,7 @@ import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 pybaseball.cache.enable()
-start_date = "2023-06-01"
-end_date = "2023-06-07"
+
 player_id = 624413  # Pete Alonso MLB ID
 
 # player_info = playerid_lookup("Alonso", "Pete")
@@ -20,7 +19,7 @@ season2024_batting_stats = pybaseball.batting_stats_bref(2024)
 mets_batting_stats = season2024_batting_stats[(season2024_batting_stats['Lev'] == 'Maj-NL') & (season2024_batting_stats['Tm'] == 'New York')]
 print(mets_batting_stats)
 
-print(season2024_batting_stats.columns)
+
 
 
 
