@@ -7,7 +7,8 @@ This project aims to reproduce and adapt the findings of the paper **"CheXNet: R
 
 
 ## Dataset  
-- **Source:** [Kaggle Pneumonia Dataset](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)  
+- **Source:** [Kaggle Pneumonia Dataset](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia) 
+- ** Link to NIH paper:**  (https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community)
 - **Classes:** Binary classification (Normal vs. Pneumonia)  
 - **Total Images:** 5,863 (1,583 Normal, 4,280 Pneumonia)  
 - **Preprocessing Steps:** Resizing, normalization, augmentation (to be detailed)  
