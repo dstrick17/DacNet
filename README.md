@@ -1,7 +1,7 @@
 # Pneumonia Detection Using Deep Learning  
 
 ## Project Overview  
-This project aims to reproduce and adapt the findings of the paper **"CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning"** by training a convolutional neural network (CNN) on a publicly available pneumonia dataset from Kaggle. The goal is to evaluate whether deep learning can match or surpass radiologists in pneumonia detection.  
+This project aims to reproduce and adapt the findings of the paper **"CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning"** (https://arxiv.org/abs/1711.05225) by training a convolutional neural network (CNN) on a publicly available pneumonia dataset from Kaggle. The goal is to evaluate whether deep learning can match or surpass radiologists in pneumonia detection.  
 
 ## Project Structure 
 
@@ -9,8 +9,8 @@ This project aims to reproduce and adapt the findings of the paper **"CheXNet: R
 ## Dataset  
 - **Source:** [Kaggle NIH Dataset](https://www.kaggle.com/datasets/nih-chest-xrays/data)
 - ** Link to NIH paper:**  (https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community)
-- **Classes:** Binary classification (Normal vs. Pneumonia)  
-- **Total Images:** 5,863 (1,583 Normal, 4,280 Pneumonia)  
+- **Classes:** classification of 14 diseases  
+- **Total Images:**  
 - **Preprocessing Steps:** Resizing, normalization, augmentation (to be detailed)  
 
 ## Methodology  
