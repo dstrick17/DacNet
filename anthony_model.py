@@ -12,14 +12,15 @@ from tqdm.auto import tqdm
 import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
+tqdm._instances.clear() 
 
 # Configuration settings
 CONFIG = {
     "model": "EfficientNetB3",
-    "batch_size": 128,
+    "batch_size": 512,
     "learning_rate": 0.01,
     "epochs": 10,
-    "num_workers": 8,
+    "num_workers": min(16, os.cpu_count()),
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
     "wandb_project": "X-Ray Classification",
@@ -112,13 +113,20 @@ def collate_fn(batch_indices, df, image_to_folder, transform):
     return images, labels
 
 # Set up DataLoaders with our lists of indices
-trainloader = DataLoader(train_indices, batch_size=CONFIG["batch_size"], shuffle=True, 
+trainloader = DataLoader(train_indices,
+                         batch_size=CONFIG["batch_size"],
+                         shuffle=True, 
                          num_workers=CONFIG["num_workers"], 
-                         collate_fn=lambda x: collate_fn(x, df, image_to_folder, transform), persistent_workers=True)
-valloader = DataLoader(val_indices, batch_size=CONFIG["batch_size"], shuffle=False, 
+                         collate_fn=lambda x: collate_fn(x, df, image_to_folder, transform),
+                         persistent_workers=True)
+valloader = DataLoader(val_indices,
+                       batch_size=CONFIG["batch_size"],
+                       shuffle=False, 
                        num_workers=CONFIG["num_workers"], 
                        collate_fn=lambda x: collate_fn(x, df, image_to_folder, transform))
-testloader = DataLoader(test_indices, batch_size=CONFIG["batch_size"], shuffle=False, 
+testloader = DataLoader(test_indices,
+                        batch_size=CONFIG["batch_size"],
+                        shuffle=False, 
                         num_workers=CONFIG["num_workers"], 
                         collate_fn=lambda x: collate_fn(x, df, image_to_folder, transform))
 
@@ -135,6 +143,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
             desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Eval]",
             position=0,
             leave=True,
+            mininterval=0.5,
             ascii=True,
             bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
             )
@@ -142,7 +151,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
         for inputs, labels in progress_bar:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            with torch.cuda.amp.autocast(enabled=device.startswith('cuda')):
+            with torch.amp.autocast(device_type='cuda', enabled=CONFIG["device"].startswith('cuda')):
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
             
@@ -168,13 +177,27 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
 
 # Load and modify the model
 model = efficientnet_b3(weights=EfficientNet_B3_Weights.IMAGENET1K_V1)
-model.classifier = nn.Sequential(nn.Dropout(0.3), nn.Linear(model.classifier[1].in_features, 14))  # 14 disease classes
+model.classifier = nn.Sequential(
+    nn.Dropout(0.3),
+    nn.Linear(model.classifier[1].in_features, 512),
+    nn.SiLU(),
+    nn.BatchNorm1d(512),
+    nn.Dropout(0.2),
+    nn.Linear(512, 14))
 model = model.to(CONFIG["device"])
 
 # Define loss function, optimizer, scheduler, scaler
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
-scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=CONFIG["learning_rate"], steps_per_epoch=len(trainloader), epochs=CONFIG["epochs"])
+scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=0.05,
+    steps_per_epoch=len(trainloader),
+    epochs=CONFIG["epochs"],
+    pct_start=0.3,
+    div_factor=25,
+    final_div_factor=1e4,
+    anneal_strategy='cos')
 scaler = torch.cuda.amp.GradScaler(enabled=CONFIG["device"] in ('cuda', 'mps'))
 
 # Training function
@@ -190,6 +213,7 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
             desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
             position=0,
             leave=True,
+            mininterval=0.5,
             ascii=True,
             bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
             )
@@ -198,13 +222,13 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
 
-        with torch.cuda.amp.autocast(enabled=CONFIG["device"].startswith('cuda')):
+        with torch.amp.autocast(device_type='cuda', enabled=CONFIG["device"].startswith('cuda')):
             outputs = model(inputs)
             loss = criterion(outputs, labels)
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0, error_if_nonfinite=True)
         scaler.step(optimizer)
         scaler.update()
 
@@ -237,6 +261,7 @@ wandb.watch(model, log= "all", log_freq=100)
 
 best_val_auc = 0.0  # Switch to tracking best AUC instead of accuracy
 for epoch in range(CONFIG["epochs"]):
+    os.system('cls' if os.name == 'nt' else 'clear')
     train_loss, train_acc = train(epoch, model, trainloader, optimizer, criterion, CONFIG)
     val_loss, val_auc, val_f1 = validate(model, valloader, criterion, CONFIG["device"])
 
@@ -263,7 +288,7 @@ for epoch in range(CONFIG["epochs"]):
         print(f"New best model saved with AUC: {val_auc:.4f}")
 
 # Evaluate the best model
-checkpoint = torch.load("best_model.pth")
+checkpoint = torch.load("best_model.pth", weights_only=True)
 model.load_state_dict(checkpoint['model_state_dict'])
 print(f"Loaded best model from epoch {checkpoint['epoch']} with AUC {checkpoint['best_auc']:.4f}")
 
