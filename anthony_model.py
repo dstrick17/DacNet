@@ -18,7 +18,7 @@ tqdm._instances.clear()
 CONFIG = {
     "model": "EfficientNetB3",
     "batch_size": 128,
-    "learning_rate": 0.005,
+    "learning_rate": 0.001,
     "epochs": 20,
     "num_workers": min(16, os.cpu_count()),
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
