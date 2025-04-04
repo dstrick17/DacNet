@@ -17,7 +17,7 @@ tqdm._instances.clear()
 # Configuration settings
 CONFIG = {
     "model": "EfficientNetB3",
-    "batch_size": 512,
+    "batch_size": 128,
     "learning_rate": 0.01,
     "epochs": 10,
     "num_workers": min(16, os.cpu_count()),
