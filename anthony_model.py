@@ -130,7 +130,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
 
     with torch.no_grad():
         progress_bar = tqdm(
-            trainloader,
+            testloader,
             desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
             position=0,
             leave=True,
@@ -256,9 +256,6 @@ for epoch in range(CONFIG["epochs"]):
             'model_state_dict': model.state_dict(),
             'best_auc': best_val_auc,
         }, "best_model.pth")
-
-        wandb.save("best_model.pth")
-        print(f"New best model saved with AUC: {val_auc:.4f}")
     
     wandb.save("best_model.pth")
     print(f"New best model saved with AUC: {val_auc:.4f}")
