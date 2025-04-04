@@ -19,7 +19,7 @@ CONFIG = {
     "model": "EfficientNetB3",
     "batch_size": 128,
     "learning_rate": 0.001,
-    "epochs": 10,
+    "epochs": 20,
     "num_workers": min(16, os.cpu_count()),
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
@@ -261,10 +261,8 @@ wandb.watch(model, log= "all", log_freq=100)
 
 best_val_auc = 0.0  # Switch to tracking best AUC instead of accuracy
 for epoch in range(CONFIG["epochs"]):
-    os.system('cls' if os.name == 'nt' else 'clear')
     train_loss, train_acc = train(epoch, model, trainloader, optimizer, criterion, CONFIG)
     val_loss, val_auc, val_f1 = validate(model, valloader, criterion, CONFIG["device"])
-
     scheduler.step()
 
     wandb.log({
