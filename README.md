@@ -20,6 +20,7 @@ This project aims to reproduce and adapt the findings of the paper **"CheXNet: R
 3. **Training & Validation:** Splitting dataset, training with loss monitoring  
 4. **Evaluation:** Computing accuracy, F1 score, AUC-ROC, and confusion matrix  
 5. **Comparison:** Evaluating performance against the CheXNet study  
+6. **Try other models:** See if transformer based models work better than CNN models such as DenseNet
 
 ## Installation & Setup  
 ### Clone the Repository  

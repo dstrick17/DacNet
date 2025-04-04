@@ -1,0 +1,60 @@
+{
+  "os": "Linux-4.18.0-553.40.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "python": "CPython 3.11.11",
+  "startedAt": "2025-04-04T15:39:48.971502Z",
+  "program": "/projectnb/dl4ds/projects/dca_project/simplecnn2.py",
+  "codePath": "simplecnn2.py",
+  "git": {
+    "remote": "https://github.com/dstrick17/Deep-Learning-Project.git",
+    "commit": "77235d4ef76e98ef6e4ae2babe615335314e9691"
+  },
+  "email": "dstrick@bu.edu",
+  "root": "/projectnb/dl4ds/projects/dca_project",
+  "host": "scc-211",
+  "executable": "/share/pkg.8/academic-ml/spring-2025/install/spring-2025-pyt/bin/python",
+  "codePathLocal": "simplecnn2.py",
+  "cpu_count": 32,
+  "cpu_count_logical": 32,
+  "gpu": "NVIDIA A40",
+  "gpu_count": 4,
+  "disk": {
+    "/": {
+      "total": "20957446144",
+      "used": "15184936960"
+    }
+  },
+  "memory": {
+    "total": "269217464320"
+  },
+  "cpu": {
+    "count": 32,
+    "countLogical": 32
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA A40",
+      "memoryTotal": "48305799168",
+      "cudaCores": 10752,
+      "architecture": "Ampere"
+    },
+    {
+      "name": "NVIDIA A40",
+      "memoryTotal": "48305799168",
+      "cudaCores": 10752,
+      "architecture": "Ampere"
+    },
+    {
+      "name": "NVIDIA A40",
+      "memoryTotal": "48305799168",
+      "cudaCores": 10752,
+      "architecture": "Ampere"
+    },
+    {
+      "name": "NVIDIA A40",
+      "memoryTotal": "48305799168",
+      "cudaCores": 10752,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.8"
+}

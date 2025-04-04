@@ -1,0 +1,30 @@
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_setup.py:_flush():67] Current SDK version is 0.19.8
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_setup.py:_flush():67] Configure stats pid to 1184187
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_setup.py:_flush():67] Loading settings from /usr4/ds542/dstrick/.config/wandb/settings
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_setup.py:_flush():67] Loading settings from /projectnb/dl4ds/projects/dca_project/wandb/settings
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_setup.py:_flush():67] Loading settings from environment variables
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_init.py:setup_run_log_directory():647] Logging user logs to /projectnb/dl4ds/projects/dca_project/wandb/run-20250404_125003-hnli5rvz/logs/debug.log
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_init.py:setup_run_log_directory():648] Logging internal logs to /projectnb/dl4ds/projects/dca_project/wandb/run-20250404_125003-hnli5rvz/logs/debug-internal.log
+2025-04-04 12:50:03,737 INFO    MainThread:1184187 [wandb_init.py:init():761] calling init triggers
+2025-04-04 12:50:03,738 INFO    MainThread:1184187 [wandb_init.py:init():766] wandb.init called with sweep_config: {}
+config: {'model': 'DenseNet', 'batch_size': 128, 'learning_rate': 0.01, 'epochs': 1, 'num_workers': 8, 'device': 'cuda', 'data_dir': './nih_data', 'wandb_project': 'X-Ray Classification', 'seed': 42, '_wandb': {}}
+2025-04-04 12:50:03,738 INFO    MainThread:1184187 [wandb_init.py:init():784] starting backend
+2025-04-04 12:50:03,738 INFO    MainThread:1184187 [wandb_init.py:init():788] sending inform_init request
+2025-04-04 12:50:03,741 INFO    MainThread:1184187 [backend.py:_multiprocessing_setup():101] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-04-04 12:50:03,741 INFO    MainThread:1184187 [wandb_init.py:init():798] backend started and connected
+2025-04-04 12:50:03,744 INFO    MainThread:1184187 [wandb_init.py:init():891] updated telemetry
+2025-04-04 12:50:03,750 INFO    MainThread:1184187 [wandb_init.py:init():915] communicating run to backend with 90.0 second timeout
+2025-04-04 12:50:03,983 INFO    MainThread:1184187 [wandb_init.py:init():990] starting run threads in backend
+2025-04-04 12:50:04,321 INFO    MainThread:1184187 [wandb_run.py:_console_start():2375] atexit reg
+2025-04-04 12:50:04,321 INFO    MainThread:1184187 [wandb_run.py:_redirect():2227] redirect: wrap_raw
+2025-04-04 12:50:04,321 INFO    MainThread:1184187 [wandb_run.py:_redirect():2292] Wrapping output streams.
+2025-04-04 12:50:04,322 INFO    MainThread:1184187 [wandb_run.py:_redirect():2315] Redirects installed.
+2025-04-04 12:50:04,324 INFO    MainThread:1184187 [wandb_init.py:init():1032] run started, returning control to user process
+2025-04-04 12:50:04,325 INFO    MainThread:1184187 [wandb_watch.py:_watch():71] Watching
+2025-04-04 12:56:03,907 INFO    MainThread:1184187 [wandb_run.py:_finish():2112] finishing run dstrick-boston-university/X-Ray Classification/hnli5rvz
+2025-04-04 12:56:03,907 INFO    MainThread:1184187 [wandb_run.py:_atexit_cleanup():2340] got exitcode: 0
+2025-04-04 12:56:03,908 INFO    MainThread:1184187 [wandb_run.py:_restore():2322] restore
+2025-04-04 12:56:03,908 INFO    MainThread:1184187 [wandb_run.py:_restore():2328] restore done
+2025-04-04 12:56:05,115 INFO    MainThread:1184187 [wandb_run.py:_footer_history_summary_info():3956] rendering history
+2025-04-04 12:56:05,115 INFO    MainThread:1184187 [wandb_run.py:_footer_history_summary_info():3988] rendering summary
+2025-04-04 12:56:05,115 INFO    MainThread:1184187 [wandb_run.py:_footer_sync_info():3917] logging synced files

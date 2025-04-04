@@ -1,0 +1,13 @@
+Epoch 1/3 [Train]: 100%|███████████████████| 9811/9811 [07:44<00:00, 21.13it/s, loss=0.181, acc=94.8]
+[Validate]: 100%|██████████████████████████| 2103/2103 [01:09<00:00, 30.08it/s, loss=0.173, acc=94.8]
+Epoch 2/3 [Train]: 100%|███████████████████| 9811/9811 [07:57<00:00, 20.53it/s, loss=0.172, acc=94.8]
+[Validate]: 100%|██████████████████████████| 2103/2103 [00:34<00:00, 60.78it/s, loss=0.167, acc=94.9]
+Epoch 3/3 [Train]: 100%|███████████████████| 9811/9811 [07:43<00:00, 21.18it/s, loss=0.167, acc=94.8]
+[Validate]: 100%|█| 2103/2103 [00:34<00:00, 61.12it/s, loss=0.164, acc=94
+/projectnb/dl4ds/projects/dca_project/simplecnn2.py:189: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load("best_model.pth"))
+Traceback (most recent call last):
+  File "/projectnb/dl4ds/projects/dca_project/simplecnn2.py", line 190, in <module>
+    test_loss, test_auc = evaluate(model, testloader, criterion, CONFIG["device"])
+                          ^^^^^^^^
+NameError: name 'evaluate' is not defined

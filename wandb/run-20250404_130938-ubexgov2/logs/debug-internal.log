@@ -1,0 +1,16 @@
+{"time":"2025-04-04T13:09:38.988533041-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/projectnb/dl4ds/projects/dca_project/wandb/run-20250404_130938-ubexgov2/logs/debug-core.log"}
+{"time":"2025-04-04T13:09:39.093544587-04:00","level":"INFO","msg":"created new stream","id":"ubexgov2"}
+{"time":"2025-04-04T13:09:39.093562769-04:00","level":"INFO","msg":"stream: started","id":"ubexgov2"}
+{"time":"2025-04-04T13:09:39.093578449-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:09:39.093658644-04:00","level":"INFO","msg":"handler: started","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:09:39.094016896-04:00","level":"INFO","msg":"sender: started","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:09:39.889430117-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-04T13:15:01.632039357-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-04T13:15:01.63282013-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-04T13:15:02.633736124-04:00","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading best_model.pth","runtime_seconds":0.455911136,"progress":"27.2MB/27.2MB"}],"total_operations":1}}
+{"time":"2025-04-04T13:15:02.805431415-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-04T13:15:02.928519425-04:00","level":"INFO","msg":"stream: closing","id":"ubexgov2"}
+{"time":"2025-04-04T13:15:02.928532123-04:00","level":"INFO","msg":"handler: closed","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:15:02.928538052-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:15:02.928542887-04:00","level":"INFO","msg":"sender: closed","stream_id":"ubexgov2"}
+{"time":"2025-04-04T13:15:02.929179928-04:00","level":"INFO","msg":"stream: closed","id":"ubexgov2"}

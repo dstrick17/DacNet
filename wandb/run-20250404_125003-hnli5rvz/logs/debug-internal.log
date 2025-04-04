@@ -1,0 +1,16 @@
+{"time":"2025-04-04T12:50:03.743641044-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/projectnb/dl4ds/projects/dca_project/wandb/run-20250404_125003-hnli5rvz/logs/debug-core.log"}
+{"time":"2025-04-04T12:50:03.849045529-04:00","level":"INFO","msg":"created new stream","id":"hnli5rvz"}
+{"time":"2025-04-04T12:50:03.849066463-04:00","level":"INFO","msg":"stream: started","id":"hnli5rvz"}
+{"time":"2025-04-04T12:50:03.849094986-04:00","level":"INFO","msg":"sender: started","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:50:03.849084854-04:00","level":"INFO","msg":"handler: started","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:50:03.84961195-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:50:03.985683211-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-04T12:56:03.908777515-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-04T12:56:03.909385009-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-04T12:56:04.910291787-04:00","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading best_model.pth","runtime_seconds":0.496195524,"progress":"27.2MB/27.2MB"}],"total_operations":1}}
+{"time":"2025-04-04T12:56:05.038141005-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-04T12:56:05.116479682-04:00","level":"INFO","msg":"stream: closing","id":"hnli5rvz"}
+{"time":"2025-04-04T12:56:05.11648952-04:00","level":"INFO","msg":"handler: closed","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:56:05.116494024-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:56:05.116496558-04:00","level":"INFO","msg":"sender: closed","stream_id":"hnli5rvz"}
+{"time":"2025-04-04T12:56:05.117143542-04:00","level":"INFO","msg":"stream: closed","id":"hnli5rvz"}

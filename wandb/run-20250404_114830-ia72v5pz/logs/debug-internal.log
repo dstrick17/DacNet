@@ -1,0 +1,15 @@
+{"time":"2025-04-04T11:48:30.727105837-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/projectnb/dl4ds/projects/dca_project/wandb/run-20250404_114830-ia72v5pz/logs/debug-core.log"}
+{"time":"2025-04-04T11:48:30.833541039-04:00","level":"INFO","msg":"created new stream","id":"ia72v5pz"}
+{"time":"2025-04-04T11:48:30.83356532-04:00","level":"INFO","msg":"stream: started","id":"ia72v5pz"}
+{"time":"2025-04-04T11:48:30.833572884-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T11:48:30.833575622-04:00","level":"INFO","msg":"handler: started","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T11:48:30.833588715-04:00","level":"INFO","msg":"sender: started","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T11:48:31.034579708-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-04T12:14:16.425753372-04:00","level":"INFO","msg":"stream: closing","id":"ia72v5pz"}
+{"time":"2025-04-04T12:14:16.425875142-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-04T12:14:16.426467623-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-04T12:14:17.713605993-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-04T12:14:17.931564788-04:00","level":"INFO","msg":"handler: closed","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T12:14:17.931598025-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T12:14:17.931635405-04:00","level":"INFO","msg":"sender: closed","stream_id":"ia72v5pz"}
+{"time":"2025-04-04T12:14:17.931927084-04:00","level":"INFO","msg":"stream: closed","id":"ia72v5pz"}

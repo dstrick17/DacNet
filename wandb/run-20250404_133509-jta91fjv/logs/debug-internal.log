@@ -1,0 +1,16 @@
+{"time":"2025-04-04T13:35:09.720260208-04:00","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/projectnb/dl4ds/projects/dca_project/wandb/run-20250404_133509-jta91fjv/logs/debug-core.log"}
+{"time":"2025-04-04T13:35:09.825317161-04:00","level":"INFO","msg":"created new stream","id":"jta91fjv"}
+{"time":"2025-04-04T13:35:09.825337417-04:00","level":"INFO","msg":"stream: started","id":"jta91fjv"}
+{"time":"2025-04-04T13:35:09.825350859-04:00","level":"INFO","msg":"handler: started","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:35:09.825352018-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:35:09.825385906-04:00","level":"INFO","msg":"sender: started","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:35:09.958367247-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-04T13:50:00.170630559-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-04T13:50:00.171321406-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-04T13:50:01.172130664-04:00","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading best_model.pth","runtime_seconds":0.28005001,"progress":"19.8MB/27.2MB"}],"total_operations":1}}
+{"time":"2025-04-04T13:50:01.498051744-04:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-04T13:50:01.831995882-04:00","level":"INFO","msg":"stream: closing","id":"jta91fjv"}
+{"time":"2025-04-04T13:50:01.832010691-04:00","level":"INFO","msg":"handler: closed","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:50:01.832016684-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:50:01.832021348-04:00","level":"INFO","msg":"sender: closed","stream_id":"jta91fjv"}
+{"time":"2025-04-04T13:50:01.832407658-04:00","level":"INFO","msg":"stream: closed","id":"jta91fjv"}
