@@ -2,3 +2,5 @@ torch
 torchvision
 tqdm
 wandb
+pandas
+scikit-learn
