@@ -18,7 +18,7 @@ tqdm._instances.clear()
 CONFIG = {
     "model": "EfficientNetB3",
     "batch_size": 128,
-    "learning_rate": 0.01,
+    "learning_rate": 0.001,
     "epochs": 10,
     "num_workers": min(16, os.cpu_count()),
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -191,7 +191,7 @@ criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
 scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.05,
+    max_lr=0.01,
     steps_per_epoch=len(trainloader),
     epochs=CONFIG["epochs"],
     pct_start=0.3,
@@ -228,7 +228,7 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0, error_if_nonfinite=True)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5, error_if_nonfinite=False)
         scaler.step(optimizer)
         scaler.update()
 
