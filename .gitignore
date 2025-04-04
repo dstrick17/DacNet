@@ -1,3 +1,6 @@
 /nih_data/
 /pneumonia_data/
 /venv/
+/wandb/
+/best_model.pth/
+/best.model.pth/
