@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
+from torchvision.models import efficientnet_b3, EfficientNet_B3_Weights
 import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import wandb
@@ -14,7 +15,7 @@ import numpy as np
 
 # Configuration settings
 CONFIG = {
-    "model": "DenseNet_pretrained",
+    "model": "EfficientNetB3",
     "batch_size": 128,
     "learning_rate": 0.01,
     "epochs": 10,
@@ -27,11 +28,11 @@ CONFIG = {
 
 # Define image transformations
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.Resize(300),
     transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness=0.1, contrast=0.1),
-    transforms.CenterCrop(224),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.CenterCrop(300),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
@@ -97,7 +98,7 @@ def collate_fn(batch_indices, df, image_to_folder, transform):
 
         except Exception as e:
             print(f"Error loading image {img_path}: {e}")
-            image = torch.zeros((3, 224, 224))  # Use blank image if loading fails
+            image = torch.zeros((3, 300, 300))  # Use blank image if loading fails
 
         labels_str = df.loc[idx, 'Finding Labels']
         label_vector = get_label_vector(labels_str)
@@ -131,7 +132,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     with torch.no_grad():
         progress_bar = tqdm(
             testloader,
-            desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
+            desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Eval]",
             position=0,
             leave=True,
             ascii=True,
@@ -166,14 +167,14 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     return test_loss, avg_auc, f1
 
 # Load and modify the model
-model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet121', pretrained=True)
-model.classifier = nn.Linear(model.classifier.in_features, 14)  # 14 disease classes
+model = efficientnet_b3(weights=EfficientNet_B3_Weights.IMAGENET1K_V1)
+model.classifier = nn.Sequential(nn.Dropout(0.3), nn.Linear(model.classifier[1].in_features, 14))  # 14 disease classes
 model = model.to(CONFIG["device"])
 
 # Define loss function, optimizer, scheduler, scaler
 criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"])
-scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"], eta_min=1e-6)
+optimizer = optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
+scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=CONFIG["learning_rate"], steps_per_epoch=len(trainloader), epochs=CONFIG["epochs"])
 scaler = torch.cuda.amp.GradScaler(enabled=CONFIG["device"] in ('cuda', 'mps'))
 
 # Training function
@@ -202,6 +203,8 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
             loss = criterion(outputs, labels)
 
         scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         scaler.step(optimizer)
         scaler.update()
 
@@ -256,9 +259,8 @@ for epoch in range(CONFIG["epochs"]):
             'model_state_dict': model.state_dict(),
             'best_auc': best_val_auc,
         }, "best_model.pth")
-    
-    wandb.save("best_model.pth")
-    print(f"New best model saved with AUC: {val_auc:.4f}")
+
+        print(f"New best model saved with AUC: {val_auc:.4f}")
 
 # Evaluate the best model
 checkpoint = torch.load("best_model.pth")
