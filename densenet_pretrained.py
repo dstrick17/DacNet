@@ -20,7 +20,7 @@ CONFIG = {
     "epochs": 1,
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
-    "data_dir": "./nih_data",
+    "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
     "wandb_project": "X-Ray Classification",
     "seed": 42,
 }
