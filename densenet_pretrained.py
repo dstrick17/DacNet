@@ -14,7 +14,7 @@ import numpy as np
 
 # Configuration settings
 CONFIG = {
-    "model": "DenseNet_untrained",
+    "model": "DenseNet_pretrained",
     "batch_size": 128,
     "learning_rate": 0.01,
     "epochs": 1,
