@@ -11,13 +11,15 @@ from tqdm.auto import tqdm
 import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
+import time
 
 # Configuration settings
 CONFIG = {
     "model": "chexnet",
     "batch_size": 16,
-    "learning_rate": 0.0001,  # Adjusted learning rate
+    "learning_rate": 0.001,  # Adjusted learning rate
     "epochs": 10,  # Adjusted epochs
+    "patience": 5,  # Patience for learning rate decay
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
@@ -28,16 +30,17 @@ CONFIG = {
 
 # Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
-    transforms.Resize((CONFIG["image_size"], CONFIG["image_size"])),
+    transforms.RandomResizedCrop(224),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
 ])
 
 transform_test = transforms.Compose([
-    transforms.Resize((CONFIG["image_size"], CONFIG["image_size"])),
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
 # Load the CSV file with image metadata
@@ -117,6 +120,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     running_loss = 0.0
     all_labels = []
     all_preds = []
+
     with torch.no_grad():
         progress_bar = tqdm(testloader, desc=desc, leave=True)
         for inputs, labels in progress_bar:
@@ -127,24 +131,43 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
             preds = torch.sigmoid(outputs)
             all_labels.append(labels.cpu())
             all_preds.append(preds.cpu())
+
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
     test_loss = running_loss / len(testloader)
+
+    # Compute AUC for each class
     auc_scores = [roc_auc_score(all_labels[:, i], all_preds[:, i]) for i in range(14)]
     avg_auc = np.mean(auc_scores)
+    for i, disease in enumerate(disease_list):
+        print(f"{desc} {disease} AUC-ROC: {auc_scores[i]:.4f}")
+    auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
+
+    # Compute macro F1 score across all 14 diseases with default 0.5 threshold
     preds_binary = (all_preds > 0.5).astype(int)
     f1 = f1_score(all_labels, preds_binary, average='macro')
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, F1 Score: {f1:.4f}")
 
-    # Calculate Pneumonia F1 Score
+    # === Optimize Pneumonia threshold ===
+    from sklearn.metrics import precision_recall_curve
+
+    def optimize_threshold(y_true, y_probs):
+        precision, recall, thresholds = precision_recall_curve(y_true, y_probs)
+        f1_scores = 2 * (precision * recall) / (precision + recall + 1e-8)
+        best_threshold = thresholds[np.argmax(f1_scores)]
+        return best_threshold
+
     pneumonia_index = disease_list.index('Pneumonia')
     pneumonia_labels = all_labels[:, pneumonia_index]
     pneumonia_preds = all_preds[:, pneumonia_index]
-    pneumonia_preds_binary = (pneumonia_preds > 0.5).astype(int)
+    best_threshold = optimize_threshold(pneumonia_labels, pneumonia_preds)
+    pneumonia_preds_binary = (pneumonia_preds > best_threshold).astype(int)
     pneumonia_f1 = f1_score(pneumonia_labels, pneumonia_preds_binary)
+
+    print(f"{desc} Pneumonia Optimal Threshold: {best_threshold:.2f}")
     print(f"{desc} Pneumonia F1 Score: {pneumonia_f1:.4f}")
 
-    return test_loss, avg_auc, f1, pneumonia_f1 #return all values including pneumonia_f1
+    return test_loss, avg_auc, f1, pneumonia_f1, auc_dict
 
 # Load and modify the model
 model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet121', pretrained=True)
@@ -152,9 +175,12 @@ model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
 
 # Define loss function and optimizer
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
-
+pneumonia_index = disease_list.index('Pneumonia')
+weights = torch.ones(14).to(CONFIG["device"])
+weights[pneumonia_index] = 5.0  # Increase weight for pneumonia
+criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
+optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=CONFIG["patience"], factor=0.1)
 # Training function
 def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
@@ -172,20 +198,28 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         progress_bar.set_postfix({"loss": running_loss / (i + 1)})
     train_loss = running_loss / len(trainloader)
     return train_loss
-
+    
 # Validation function
 def validate(model, valloader, criterion, device):
-    val_loss, val_auc, val_f1, val_pneumonia_f1 = evaluate(model, valloader, criterion, device, desc="[Validate]")
-    return val_loss, val_auc, val_f1, val_pneumonia_f1
+    val_loss, val_auc, val_f1, val_pneumonia_f1, auc_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
+    return val_loss, val_auc, val_f1, val_pneumonia_f1, auc_dict
 
-# Start training with Weights & Biases logging
-# Start training with Weights & Biases logging
+# Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
 wandb.watch(model)
+run_id = wandb.run.id
+checkpoint_dir = os.path.join("models", run_id)
+os.makedirs(checkpoint_dir, exist_ok=True)
+
 best_val_auc = 0.0
+best_val_pneumonia_f1 = 0.0
+patience_counter = 0
+
 for epoch in range(CONFIG["epochs"]):
     train_loss = train(epoch, model, trainloader, optimizer, criterion, CONFIG)
-    val_loss, val_auc, val_f1, val_pneumonia_f1 = validate(model, valloader, criterion, CONFIG["device"])
+    val_loss, val_auc, val_f1, val_pneumonia_f1, auc_dict = validate(model, valloader, criterion, CONFIG["device"])
+    scheduler.step(val_loss)
+
     wandb.log({
         "epoch": epoch + 1,
         "train_loss": train_loss,
@@ -193,14 +227,25 @@ for epoch in range(CONFIG["epochs"]):
         "val_auc": val_auc,
         "val_f1": val_f1,
         "val_pneumonia_f1": val_pneumonia_f1,
+        "auc_dict": auc_dict,
     })
-    if val_auc > best_val_auc:
-        best_val_auc = val_auc
-        torch.save(model.state_dict(), "best_model.pth")
-        wandb.save("best_model.pth")
+
+    if val_pneumonia_f1 > best_val_pneumonia_f1:
+        best_val_pneumonia_f1 = val_pneumonia_f1
+        patience_counter = 0
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
+        torch.save(model.state_dict(), checkpoint_path)
+        wandb.save(checkpoint_path)
+    else:
+        patience_counter += 1
+        if patience_counter >= CONFIG["patience"]:
+            print("Early stopping triggered.")
+            break
 
 # Evaluate the best model
-model.load_state_dict(torch.load("best_model.pth"))
-test_loss, test_auc, test_f1, test_pneumonia_f1 = evaluate(model, testloader, criterion, CONFIG["device"])
-wandb.log({"test_loss": test_loss, "test_auc": test_auc, "test_f1": test_f1, "test_pneumonia_f1": test_pneumonia_f1})
+best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
+model.load_state_dict(torch.load(best_checkpoint_path))
+test_loss, test_auc, test_f1, test_pneumonia_f1, auc_dict = evaluate(model, testloader, criterion, CONFIG["device"])
+wandb.log({"test_loss": test_loss, "test_auc": test_auc, "test_f1": test_f1, "test_pneumonia_f1": test_pneumonia_f1, "test_auc_dict": auc_dict})
 wandb.finish()
