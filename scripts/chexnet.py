@@ -18,7 +18,7 @@ CONFIG = {
     "model": "chexnet",
     "batch_size": 16,
     "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 10,  # Adjusted epochs
+    "epochs": 5,  # Adjusted epochs
     "patience": 5,  # Patience for learning rate decay
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -67,6 +67,28 @@ train_val_df, test_df = train_test_split(df, test_size=0.2, random_state=CONFIG[
 
 # Further split train+val into train and val (75% train, 25% val of train+val)
 train_df, val_df = train_test_split(train_val_df, test_size=0.25, random_state=CONFIG["seed"])  # 0.25 = 20/80
+
+# ===== BEGIN OVERSAMPLING PNEUMONIA =====
+from sklearn.utils import resample
+
+# Separate pneumonia-positive and negative examples
+pneumonia_pos = train_df[train_df['Finding Labels'].str.contains('Pneumonia')]
+pneumonia_neg = train_df[~train_df['Finding Labels'].str.contains('Pneumonia')]
+
+# Upsample positives to match negatives
+pneumonia_pos_upsampled = resample(
+    pneumonia_pos,
+    replace=True,
+    n_samples=len(pneumonia_neg),
+    random_state=CONFIG["seed"]
+)
+
+# Combine
+train_df = pd.concat([pneumonia_neg, pneumonia_pos_upsampled])
+train_df = train_df.sample(frac=1, random_state=CONFIG["seed"]).reset_index(drop=True)
+print(f"Oversampled train size: {len(train_df)} (Pneumonia: {pneumonia_pos_upsampled.shape[0]})")
+# ===== END OVERSAMPLING =====
+
 
 # List of diseases we’re classifying
 disease_list = [
