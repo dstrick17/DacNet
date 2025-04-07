@@ -19,7 +19,7 @@ CONFIG = {
     "model": "chexnet",
     "batch_size": 16,
     "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 20,  # Adjusted epochs
+    "epochs": 20,  # Adjusted epochs for snowy snow wandb run
     "patience": 5,  # Patience for learning rate decay
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
