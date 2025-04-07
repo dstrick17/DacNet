@@ -3,4 +3,6 @@
 /venv/
 /wandb/
 /best_model.pth/
-/best.model.pth/
+/scripts/wandb/
+/scripts/models/
+/scripts/__pycache/
