@@ -12,13 +12,14 @@ import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
 import time
+from focal_loss import FocalLoss
 
 # Configuration settings
 CONFIG = {
     "model": "chexnet",
     "batch_size": 16,
     "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 5,  # Adjusted epochs
+    "epochs": 20,  # Adjusted epochs
     "patience": 5,  # Patience for learning rate decay
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -198,9 +199,11 @@ model = model.to(CONFIG["device"])
 
 # Define loss function and optimizer
 pneumonia_index = disease_list.index('Pneumonia')
-weights = torch.ones(14).to(CONFIG["device"])
-weights[pneumonia_index] = 5.0  # Increase weight for pneumonia
-criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
+# weights = torch.ones(14).to(CONFIG["device"])
+# weights[pneumonia_index] = 5.0  # Increase weight for pneumonia
+# criterion = nn.BCEWithLogitsLoss(pos_weight = weights)
+criterion = FocalLoss(alpha=1, gamma=2)  # You can tune alpha/gamma later
+
 optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=CONFIG["patience"], factor=0.1)
 # Training function
