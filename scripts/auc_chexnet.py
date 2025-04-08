@@ -49,6 +49,11 @@ transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 data_path = CONFIG["data_dir"]
 csv_file = os.path.join(data_path, "Data_Entry_2017.csv")
 df = pd.read_csv(csv_file)
+df['Patient Gender'] = df['Patient Gender'].map({'M': 0, 'F': 1})  # Encode gender
+df['View Position'] = df['View Position'].map({'PA': 0, 'AP': 1})  # Encode view
+df['Patient Age'] = df['Patient Age'].clip(0, 100) / 100.0         # Normalize age
+df = df.dropna(subset=['Patient Age', 'Patient Gender', 'View Position'])  # Drop rows with missing values
+
 
 # Get list of all image folders from images_001 to images_012
 image_folders = [os.path.join(data_path, f"images_{str(i).zfill(3)}", "images") for i in range(1, 13)]
@@ -85,27 +90,44 @@ def get_label_vector(labels_str):
     else:
         return [1 if disease in labels else 0 for disease in disease_list]
 
-# Custom Dataset class
+# Custom Dataset clas
 class CheXNetDataset(Dataset):
     def __init__(self, dataframe, image_to_folder, transform=None):
         self.dataframe = dataframe
         self.image_to_folder = image_to_folder
         self.transform = transform
 
+        # Precompute mappings for categorical variables
+        self.gender_map = {'M': 0.0, 'F': 1.0}
+        self.view_map = {'PA': 0.0, 'AP': 1.0, 'LATERAL': 2.0}  # Add others as needed
+
     def __len__(self):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        img_name = self.dataframe.iloc[idx]['Image Index']
+        row = self.dataframe.iloc[idx]
+        img_name = row['Image Index']
         folder = self.image_to_folder[img_name]
         img_path = os.path.join(folder, img_name)
+
         image = Image.open(img_path).convert('RGB')
         if self.transform:
             image = self.transform(image)
-        labels_str = self.dataframe.iloc[idx]['Finding Labels']
+
+        # Labels
+        labels_str = row['Finding Labels']
         label_vector = get_label_vector(labels_str)
         labels = torch.tensor(label_vector, dtype=torch.float)
-        return image, labels
+
+        # Demographic encoding
+        age = float(row['Patient Age']) / 100.0  # normalize to [0, 1]
+        gender = self.gender_map.get(row['Patient Gender'], 0.5)
+        view = self.view_map.get(row['View Position'], 0.5)
+
+        demographics = torch.tensor([age, gender, view], dtype=torch.float)
+
+        return image, demographics, labels
+
 
 # Set up DataLoaders with our custom datasets
 train_dataset = CheXNetDataset(train_df, image_to_folder, transform=transform_train)
@@ -124,9 +146,9 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     all_preds = []
     with torch.no_grad():
         progress_bar = tqdm(testloader, desc=desc, leave=True)
-        for inputs, labels in progress_bar:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
+        for inputs, demographics, labels in progress_bar:
+            inputs, demographics, labels = inputs.to(device), demographics.to(device), labels.to(device)
+            outputs = model(inputs, demographics)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
             preds = torch.sigmoid(outputs)
@@ -156,16 +178,39 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
- # Load and modify the model
-model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
-model.classifier = nn.Linear(model.classifier.in_features, 14)
+class CheXNetWithDemographics(nn.Module):
+    def __init__(self, base_model, demographic_dim=3, num_classes=14):
+        super().__init__()
+        self.feature_extractor = nn.Sequential(
+            base_model.features,
+            nn.AdaptiveAvgPool2d((1, 1)),  # Output: [batch_size, 1024, 1, 1]
+            nn.Flatten()                   # Output: [batch_size, 1024]
+        )
+        self.demographic_layer = nn.Linear(demographic_dim, 128)
+        self.classifier = nn.Sequential(
+            nn.Linear(1024 + 128, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+
+    def forward(self, x, demographics):
+        x = self.feature_extractor(x)          # Shape: [B, 1024]
+        d = self.demographic_layer(demographics)  # Shape: [B, 128]
+        combined = torch.cat([x, d], dim=1)    # Shape: [B, 1152]
+        return self.classifier(combined)
+
+
+# Instantiate the model
+base_densenet = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+model = CheXNetWithDemographics(base_densenet)
 model = model.to(CONFIG["device"])
+
 
 # Define loss function and optimizer
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
-
 
 
  # Training function
@@ -174,10 +219,10 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     model.train()
     running_loss = 0.0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
-    for i, (inputs, labels) in enumerate(progress_bar):
-        inputs, labels = inputs.to(device), labels.to(device)
+    for i, (inputs, demographics, labels) in enumerate(progress_bar):
+        inputs, demographics, labels = inputs.to(device), demographics.to(device), labels.to(device)
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(inputs, demographics)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -195,7 +240,7 @@ def validate(model, valloader, criterion, device):
 
  # Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
-wandb.watch(model)
+wandb.watch(model, log="all")
 run_id = wandb.run.id
 checkpoint_dir = os.path.join("models", run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
