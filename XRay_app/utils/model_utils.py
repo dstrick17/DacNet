@@ -1,22 +1,41 @@
+# utils/model_utils.py
 import torch
 import torch.nn as nn
+from torchvision.models import densenet121, DenseNet121_Weights
 
-class DummyModel(nn.Module):
-    def __init__(self, num_classes=2):
-        super(DummyModel, self).__init__()
-        self.num_classes = num_classes
+# Disease labels
+DISEASE_LIST = [
+    'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion',
+    'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration', 'Mass',
+    'Nodule', 'Pleural_Thickening', 'Pneumonia', 'Pneumothorax'
+]
+
+# Load trained CheXNet model
+class CheXNet(nn.Module):
+    def __init__(self, num_classes=14):
+        super().__init__()
+        base_model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+        self.features = base_model.features
+        self.classifier = nn.Linear(base_model.classifier.in_features, num_classes)
 
     def forward(self, x):
-        batch_size = x.shape[0]
-        return torch.tensor([[2.0, 1.0]] * batch_size)  # fixed logits
+        x = self.features(x)
+        x = nn.functional.adaptive_avg_pool2d(x, (1, 1))
+        x = torch.flatten(x, 1)
+        return self.classifier(x)
 
-def load_model(path=None, model_name=None):
-    return DummyModel()
+def load_model(model_path, device):
+    model = CheXNet()
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
+    model.eval()
+    return model
 
-def predict(model, img_tensor):
+def predict(model, img_tensor, device):
     with torch.no_grad():
-        output = model(img_tensor.unsqueeze(0))
-        probs = torch.nn.functional.softmax(output[0], dim=0)
-    return probs
+        output = model(img_tensor.unsqueeze(0).to(device))
+        probs = torch.sigmoid(output[0]).cpu().numpy()
+    return dict(zip(DISEASE_LIST, probs))
+
 
 
