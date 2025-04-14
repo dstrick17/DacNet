@@ -90,7 +90,7 @@ def get_label_vector(labels_str):
     else:
         return [1 if disease in labels else 0 for disease in disease_list]
 
-# Custom Dataset clas
+# Custom Dataset class
 class CheXNetDataset(Dataset):
     def __init__(self, dataframe, image_to_folder, transform=None):
         self.dataframe = dataframe
