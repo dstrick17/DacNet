@@ -1,8 +1,14 @@
+# Ignore datasets
 /nih_data/
 /pneumonia_data/
+
+# Ignore Python virtual environments
 /venv/
-/wandb/
-/best_model.pth/
-/scripts/models/
-/scripts/wandb/
-/scripts/__pycache__/
+/.venv/
+
+# Ignore model outputs and logs
+/models/
+/**/wandb/
+/**/__pycache__/
+/**/*.pth
+

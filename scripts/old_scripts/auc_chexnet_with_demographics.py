@@ -17,8 +17,8 @@ import time
 # Configuration settings
 CONFIG = {
     "model": "auc_chexnet",
-    "batch_size": 16,
-    "learning_rate": 0.001,  # Adjusted learning rate
+    "batch_size": 32,
+    "learning_rate": 0.0001,  # Adjusted learning rate
     "epochs": 20,  # Adjusted epochs
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -49,6 +49,11 @@ transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 data_path = CONFIG["data_dir"]
 csv_file = os.path.join(data_path, "Data_Entry_2017.csv")
 df = pd.read_csv(csv_file)
+df['Patient Gender'] = df['Patient Gender'].map({'M': 0, 'F': 1})  # Encode gender
+df['View Position'] = df['View Position'].map({'PA': 0, 'AP': 1})  # Encode view
+df['Patient Age'] = df['Patient Age'].clip(0, 100) / 100.0         # Normalize age
+df = df.dropna(subset=['Patient Age', 'Patient Gender', 'View Position'])  # Drop rows with missing values
+
 
 # Get list of all image folders from images_001 to images_012
 image_folders = [os.path.join(data_path, f"images_{str(i).zfill(3)}", "images") for i in range(1, 13)]
@@ -63,25 +68,12 @@ for folder in image_folders:
 
 # Filter the CSV to include only images that are present in the folders
 df = df[df['Image Index'].isin(image_to_folder.keys())]
-df = df[df['View Position'].isin(['PA', 'AP'])]
 
-# Unique patient IDs
-unique_patients = df['Patient ID'].unique()
+# Split the data into train+val and test (80% train+val, 20% test)
+train_val_df, test_df = train_test_split(df, test_size=0.2, random_state=CONFIG["seed"])
 
-# Split patients — not rows
-train_val_patients, test_patients = train_test_split(
-unique_patients, test_size=0.02, random_state=CONFIG["seed"]
-)
-
-train_patients, val_patients = train_test_split(
-train_val_patients, test_size=0.052, random_state=CONFIG["seed"]
-)
-
-#Use those patients to filter full image rows
-train_df = df[df['Patient ID'].isin(train_patients)]
-val_df   = df[df['Patient ID'].isin(val_patients)]
-test_df  = df[df['Patient ID'].isin(test_patients)]
-
+# Further split train+val into train and val (75% train, 25% val of train+val)
+train_df, val_df = train_test_split(train_val_df, test_size=0.25, random_state=CONFIG["seed"])  # 0.25 = 20/80
 
 # List of diseases we’re classifying
 disease_list = [
@@ -97,7 +89,7 @@ def get_label_vector(labels_str):
         return [0] * len(disease_list)
     else:
         return [1 if disease in labels else 0 for disease in disease_list]
- 
+
 # Custom Dataset class
 class CheXNetDataset(Dataset):
     def __init__(self, dataframe, image_to_folder, transform=None):
@@ -105,20 +97,36 @@ class CheXNetDataset(Dataset):
         self.image_to_folder = image_to_folder
         self.transform = transform
 
+        # Precompute mappings for categorical variables
+        self.gender_map = {'M': 0.0, 'F': 1.0}
+        self.view_map = {'PA': 0.0, 'AP': 1.0, 'LATERAL': 2.0}  # Add others as needed
+
     def __len__(self):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        img_name = self.dataframe.iloc[idx]['Image Index']
+        row = self.dataframe.iloc[idx]
+        img_name = row['Image Index']
         folder = self.image_to_folder[img_name]
         img_path = os.path.join(folder, img_name)
+
         image = Image.open(img_path).convert('RGB')
         if self.transform:
             image = self.transform(image)
-        labels_str = self.dataframe.iloc[idx]['Finding Labels']
+
+        # Labels
+        labels_str = row['Finding Labels']
         label_vector = get_label_vector(labels_str)
         labels = torch.tensor(label_vector, dtype=torch.float)
-        return image, labels
+
+        # Demographic encoding
+        age = float(row['Patient Age']) / 100.0  # normalize to [0, 1]
+        gender = self.gender_map.get(row['Patient Gender'], 0.5)
+        view = self.view_map.get(row['View Position'], 0.5)
+
+        demographics = torch.tensor([age, gender, view], dtype=torch.float)
+
+        return image, demographics, labels
 
 # Set up DataLoaders with our custom datasets
 train_dataset = CheXNetDataset(train_df, image_to_folder, transform=transform_train)
@@ -137,9 +145,9 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     all_preds = []
     with torch.no_grad():
         progress_bar = tqdm(testloader, desc=desc, leave=True)
-        for inputs, labels in progress_bar:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
+        for inputs, demographics, labels in progress_bar:
+            inputs, demographics, labels = inputs.to(device), demographics.to(device), labels.to(device)
+            outputs = model(inputs, demographics)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
             preds = torch.sigmoid(outputs)
@@ -169,29 +177,51 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
-# Load and modify the model
-model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
-model.classifier = nn.Linear(model.classifier.in_features, 14)
+class CheXNetWithDemographics(nn.Module):
+    def __init__(self, base_model, demographic_dim=3, num_classes=14):
+        super().__init__()
+        self.feature_extractor = nn.Sequential(
+            base_model.features,
+            nn.AdaptiveAvgPool2d((1, 1)),  # Output: [batch_size, 1024, 1, 1]
+            nn.Flatten()                   # Output: [batch_size, 1024]
+        )
+        self.demographic_layer = nn.Linear(demographic_dim, 128)
+        self.classifier = nn.Sequential(
+            nn.Linear(1024 + 128, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+
+    def forward(self, x, demographics):
+        x = self.feature_extractor(x)          # Shape: [B, 1024]
+        d = self.demographic_layer(demographics)  # Shape: [B, 128]
+        combined = torch.cat([x, d], dim=1)    # Shape: [B, 1152]
+        return self.classifier(combined)
+
+
+# Instantiate the model
+base_densenet = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+model = CheXNetWithDemographics(base_densenet)
 model = model.to(CONFIG["device"])
+
 
 # Define loss function and optimizer
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
-# betas=(0.9, 0.999) - this is default in pytorch
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
 
 
-
-# Training function
+ # Training function
 def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
     running_loss = 0.0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
-    for i, (inputs, labels) in enumerate(progress_bar):
-        inputs, labels = inputs.to(device), labels.to(device)
+    for i, (inputs, demographics, labels) in enumerate(progress_bar):
+        inputs, demographics, labels = inputs.to(device), demographics.to(device), labels.to(device)
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(inputs, demographics)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -199,16 +229,19 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         progress_bar.set_postfix({"loss": running_loss / (i + 1)})
     train_loss = running_loss / len(trainloader)
     return train_loss
-
+ 
 def validate(model, valloader, criterion, device):
     val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
     return val_loss, val_auc, val_f1, auc_dict, f1_dict
+
+
+ 
 
  # Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
 wandb.watch(model, log="all")
 run_id = wandb.run.id
-checkpoint_dir = os.path.join("..", "models", run_id)
+checkpoint_dir = os.path.join("models", run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 best_val_auc = 0.0
