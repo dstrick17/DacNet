@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from PIL import Image
 import torch
@@ -13,13 +12,15 @@ from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
 import time
+import os
+tqdm._instances.clear() 
 
 # Configuration settings
 CONFIG = {
-    "model": "train_chexnet",
-    "batch_size": 16,
-    "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 25,  # Adjusted epochs
+    "model": "auc_chexnet",
+    "batch_size": 32,
+    "learning_rate": 0.0001,  # Adjusted learning rate
+    "epochs": 20,  # Adjusted epochs
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
@@ -28,28 +29,30 @@ CONFIG = {
     "seed": 42,
     "image_size": 224,  # Consistent image size
 }
-
-# Define image transformations (consistent with CheXNet)
+ 
+# Define image transformations
 transform_train = transforms.Compose([
     transforms.RandomResizedCrop(224),
     transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
 ])
-
+ 
 transform_test = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
-
-
+ 
+ 
 # Load the CSV file with image metadata
 data_path = CONFIG["data_dir"]
 csv_file = os.path.join(data_path, "Data_Entry_2017.csv")
 df = pd.read_csv(csv_file)
-
+ 
 # Get list of all image folders from images_001 to images_012
 image_folders = [os.path.join(data_path, f"images_{str(i).zfill(3)}", "images") for i in range(1, 13)]
 
@@ -60,28 +63,15 @@ for folder in image_folders:
         for img_file in os.listdir(folder):
             if img_file.endswith('.png'):
                 image_to_folder[img_file] = folder
-
+ 
 # Filter the CSV to include only images that are present in the folders
 df = df[df['Image Index'].isin(image_to_folder.keys())]
-df = df[df['View Position'].isin(['PA', 'AP'])]
 
-# Unique patient IDs
-unique_patients = df['Patient ID'].unique()
+# Split the data into train+val and test (80% train+val, 20% test)
+train_val_df, test_df = train_test_split(df, test_size=0.2, random_state=CONFIG["seed"])
 
-# Split patients — not rows
-train_val_patients, test_patients = train_test_split(
-unique_patients, test_size=0.02, random_state=CONFIG["seed"]
-)
-
-train_patients, val_patients = train_test_split(
-train_val_patients, test_size=0.052, random_state=CONFIG["seed"]
-)
-
-#Use those patients to filter full image rows
-train_df = df[df['Patient ID'].isin(train_patients)]
-val_df   = df[df['Patient ID'].isin(val_patients)]
-test_df  = df[df['Patient ID'].isin(test_patients)]
-
+# Further split train+val into train and val (75% train, 25% val of train+val)
+train_df, val_df = train_test_split(train_val_df, test_size=0.25, random_state=CONFIG["seed"])  # 0.25 = 20/80
 
 # List of diseases we’re classifying
 disease_list = [
@@ -96,10 +86,9 @@ def get_label_vector(labels_str):
 
     if labels == ['No Finding']:
         return [0] * len(disease_list)
-    
     else:
         return [1 if disease in labels else 0 for disease in disease_list]
- 
+
 # Custom Dataset class
 class CheXNetDataset(Dataset):
     def __init__(self, dataframe, image_to_folder, transform=None):
@@ -144,13 +133,21 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     all_preds = []
 
     with torch.no_grad():
-        progress_bar = tqdm(testloader, desc=desc, leave=True)
+        progress_bar = tqdm(
+            testloader,
+            desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Eval]",
+            position=0,
+            leave=True,
+            mininterval=0.5,
+            ascii=True,
+            bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
+            )
 
         for inputs, labels in progress_bar:
             inputs, labels = inputs.to(device), labels.to(device)
-
             outputs = model(inputs)
             loss = criterion(outputs, labels)
+
             running_loss += loss.item()
             preds = torch.sigmoid(outputs)
 
@@ -195,9 +192,7 @@ model = model.to(CONFIG["device"])
 # Define loss function and optimizer
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
-# betas=(0.9, 0.999) - this is default in pytorch
-
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
 
 
 
@@ -205,21 +200,41 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patienc
 def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
+    correct = 0
+    total = 0
 
     running_loss = 0.0
-    progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
+    progress_bar = tqdm(
+            trainloader,
+            desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
+            position=0,
+            leave=True,
+            mininterval=0.5,
+            ascii=True,
+            bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
+            )
 
     for i, (inputs, labels) in enumerate(progress_bar):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
-        loss = criterion(outputs, labels)
 
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
 
         running_loss += loss.item()
-        progress_bar.set_postfix({"loss": running_loss / (i + 1)})
+
+        preds = torch.sigmoid(outputs)
+        predicted = (preds > 0.5).float()
+        
+        correct += (predicted == labels).sum().item()
+        total += labels.numel()
+
+        progress_bar.set_postfix({
+            "loss": f"{running_loss/(i+1):.4f}",
+            "pos_acc": f"{(100.*correct/total):.1f}%"
+            })
 
     train_loss = running_loss / len(trainloader)
     return train_loss
@@ -228,9 +243,12 @@ def validate(model, valloader, criterion, device):
     val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
     return val_loss, val_auc, val_f1, auc_dict, f1_dict
 
- # Training loop with WandB and timestamped checkpoints
+
+
+
+# Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
-wandb.watch(model, log="all")
+wandb.watch(model)
 
 run_id = wandb.run.id
 checkpoint_dir = os.path.join("models", run_id)
@@ -263,10 +281,8 @@ for epoch in range(CONFIG["epochs"]):
         checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
         torch.save(model.state_dict(), checkpoint_path)
         wandb.save(checkpoint_path)
-
     else:
         patience_counter += 1
-
         if patience_counter >= CONFIG["patience"]:
             print("Early stopping triggered.")
             break
@@ -274,8 +290,8 @@ for epoch in range(CONFIG["epochs"]):
 # Evaluate the best model
 best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
 model.load_state_dict(torch.load(best_checkpoint_path))
-test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
 
+test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
 wandb.log({
     "test_loss": test_loss,
     "test_auc": test_auc,
