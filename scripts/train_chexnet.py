@@ -16,10 +16,10 @@ import time
 
 # Configuration settings
 CONFIG = {
-    "model": "auc_chexnet",
+    "model": "train_chexnet",
     "batch_size": 16,
     "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 20,  # Adjusted epochs
+    "epochs": 25,  # Adjusted epochs
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
@@ -233,7 +233,7 @@ wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
 wandb.watch(model, log="all")
 
 run_id = wandb.run.id
-checkpoint_dir = os.path.join("..", "models", run_id)
+checkpoint_dir = os.path.join("models", run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 best_val_auc = 0.0
