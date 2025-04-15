@@ -31,19 +31,17 @@ CONFIG = {
 
 # Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
-    transforms.Resize(224),                   # downscale to 224×224 as stated
-    transforms.RandomHorizontalFlip(),        # only augmentation they mention
+transforms.RandomResizedCrop(224),
+    transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
 ])
 
-
 transform_test = transforms.Compose([
-    transforms.Resize(224),                   # just resize, no center crop
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
+transforms.Resize(256),
+transforms.CenterCrop(224),
+transforms.ToTensor(),
+transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
 
