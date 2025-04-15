@@ -1,6 +1,12 @@
-torch
-torchvision
-tqdm
-wandb
-pandas
-scikit-learn
+torch>=1.13.0
+torchvision>=0.14.0
+tqdm>=4.64.0
+wandb>=0.15.0
+protobuf==3.20.3  # Fix compatibility with wandb
+pandas>=1.3.0
+scikit-learn>=1.0.0
+Pillow>=8.4.0
+numpy>=1.21.0
+
+streamlit>=1.20.0       # For the Streamlit web interface
+
