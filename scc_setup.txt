@@ -9,4 +9,4 @@ python3.10 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-python3 aux_chexnet.py
+python3 densenet121.py
