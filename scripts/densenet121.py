@@ -20,7 +20,7 @@ CONFIG = {
     "model": "auc_chexnet",
     "batch_size": 32,
     "learning_rate": 0.0001,  # Adjusted learning rate
-    "epochs": 1,  # Adjusted epochs
+    "epochs": 20,  # Adjusted epochs
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
