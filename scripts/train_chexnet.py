@@ -31,17 +31,17 @@ CONFIG = {
 
 # Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
-transforms.RandomResizedCrop(224),
+    transforms.RandomResizedCrop(224),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
 ])
 
 transform_test = transforms.Compose([
-transforms.Resize(256),
-transforms.CenterCrop(224),
-transforms.ToTensor(),
-transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
 
@@ -93,8 +93,10 @@ disease_list = [
 # Function to convert label string to a vector
 def get_label_vector(labels_str):
     labels = labels_str.split('|')
+
     if labels == ['No Finding']:
         return [0] * len(disease_list)
+    
     else:
         return [1 if disease in labels else 0 for disease in disease_list]
  
@@ -111,13 +113,17 @@ class CheXNetDataset(Dataset):
     def __getitem__(self, idx):
         img_name = self.dataframe.iloc[idx]['Image Index']
         folder = self.image_to_folder[img_name]
+
         img_path = os.path.join(folder, img_name)
         image = Image.open(img_path).convert('RGB')
+
         if self.transform:
             image = self.transform(image)
+
         labels_str = self.dataframe.iloc[idx]['Finding Labels']
         label_vector = get_label_vector(labels_str)
         labels = torch.tensor(label_vector, dtype=torch.float)
+
         return image, labels
 
 # Set up DataLoaders with our custom datasets
@@ -133,18 +139,24 @@ testloader = DataLoader(test_dataset, batch_size=CONFIG["batch_size"], shuffle=F
 def evaluate(model, testloader, criterion, device, desc="[Test]"):
     model.eval()
     running_loss = 0.0
+
     all_labels = []
     all_preds = []
+
     with torch.no_grad():
         progress_bar = tqdm(testloader, desc=desc, leave=True)
+
         for inputs, labels in progress_bar:
             inputs, labels = inputs.to(device), labels.to(device)
+
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
             preds = torch.sigmoid(outputs)
+
             all_labels.append(labels.cpu())
             all_preds.append(preds.cpu())
+
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
     test_loss = running_loss / len(testloader)
@@ -152,21 +164,27 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     # Compute AUC for each class
     auc_scores = [roc_auc_score(all_labels[:, i], all_preds[:, i]) for i in range(14)]
     avg_auc = np.mean(auc_scores)
+
     for i, disease in enumerate(disease_list):
         print(f"{desc} {disease} AUC-ROC: {auc_scores[i]:.4f}")
+
     auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
 
     # Compute binary predictions for all classes
     preds_binary = (all_preds > 0.5).astype(int)
+
     # Per-class F1 scores
     f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
     avg_f1 = np.mean(f1_scores)
+
     # Print per-class F1
     for i, disease in enumerate(disease_list):
         print(f"{desc} {disease} F1 Score: {f1_scores[i]:.4f}")
+
     # Build F1 dictionary
     f1_dict = {disease_list[i]: f1_scores[i] for i in range(14)}
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
+
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
 # Load and modify the model
@@ -178,6 +196,7 @@ model = model.to(CONFIG["device"])
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
 # betas=(0.9, 0.999) - this is default in pytorch
+
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
 
 
@@ -186,17 +205,22 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patienc
 def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
+
     running_loss = 0.0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
+
     for i, (inputs, labels) in enumerate(progress_bar):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
+
         loss.backward()
         optimizer.step()
+
         running_loss += loss.item()
         progress_bar.set_postfix({"loss": running_loss / (i + 1)})
+
     train_loss = running_loss / len(trainloader)
     return train_loss
 
@@ -207,6 +231,7 @@ def validate(model, valloader, criterion, device):
  # Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
 wandb.watch(model, log="all")
+
 run_id = wandb.run.id
 checkpoint_dir = os.path.join("..", "models", run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
@@ -234,11 +259,14 @@ for epoch in range(CONFIG["epochs"]):
 
         patience_counter = 0
         timestamp = time.strftime("%Y%m%d-%H%M%S")
+
         checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
         torch.save(model.state_dict(), checkpoint_path)
         wandb.save(checkpoint_path)
+
     else:
         patience_counter += 1
+
         if patience_counter >= CONFIG["patience"]:
             print("Early stopping triggered.")
             break
@@ -247,6 +275,7 @@ for epoch in range(CONFIG["epochs"]):
 best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
 model.load_state_dict(torch.load(best_checkpoint_path))
 test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
+
 wandb.log({
     "test_loss": test_loss,
     "test_auc": test_auc,
