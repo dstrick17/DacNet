@@ -11,6 +11,7 @@ import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
+from torchvision.models import vit_b_16, ViT_B_16_Weights
 import time
 import os
 tqdm._instances.clear() 
@@ -183,8 +184,8 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
 # Load and modify the model
-model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
-model.classifier = nn.Linear(model.classifier.in_features, 14)
+model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+model.heads = nn.Linear(model.heads.in_features, 14)
 model = model.to(CONFIG["device"])
 
 # Define loss function and optimizer
