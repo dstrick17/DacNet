@@ -19,7 +19,7 @@ tqdm._instances.clear()
 # Configuration settings
 CONFIG = {
     "model": "auc_chexnet",
-    "batch_size": 32,
+    "batch_size": 256,
     "learning_rate": 0.0001,  # Adjusted learning rate
     "epochs": 20,  # Adjusted epochs
     "num_workers": 8,
