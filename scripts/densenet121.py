@@ -11,7 +11,7 @@ import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
-from torchvision.models import vit_b_16, ViT_B_16_Weights
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import time
 import os
 tqdm._instances.clear() 
@@ -19,7 +19,7 @@ tqdm._instances.clear()
 # Configuration settings
 CONFIG = {
     "model": "auc_chexnet",
-    "batch_size": 256,
+    "batch_size": 32,
     "learning_rate": 0.0001,  # Adjusted learning rate
     "epochs": 20,  # Adjusted epochs
     "num_workers": 8,
@@ -28,7 +28,10 @@ CONFIG = {
     "wandb_project": "X-Ray Classification",
     "patience": 5,
     "seed": 42,
-    "image_size": 224,  # Consistent image size
+    "image_size": 224,
+    "transformer_hidden_dim": 512,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
 }
  
 # Define image transformations
@@ -46,6 +49,33 @@ transform_test = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
  
+class DenseNetWithTransformer(nn.Module):
+    def __init__(self, num_classes=14, hidden_dim=512, nhead=8, num_layers=2):
+        super(DenseNetWithTransformer, self).__init__()
+        base_model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+        self.features = base_model.features  # DenseNet feature extractor
+        
+        self.hidden_dim = hidden_dim
+        self.pool = nn.AdaptiveAvgPool2d((7, 7))  # Ensures consistent spatial dims
+        self.patch_proj = nn.Linear(1024, hidden_dim)  # Project DenseNet channels to transformer dim
+
+        encoder_layer = TransformerEncoderLayer(d_model=hidden_dim, nhead=nhead, dim_feedforward=1024, dropout=0.1, batch_first=True)
+        self.transformer = TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        self.classifier = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, x):
+        x = self.features(x)  # [B, 1024, H, W]
+        x = self.pool(x)      # [B, 1024, 7, 7]
+        x = x.flatten(2).permute(0, 2, 1)  # [B, 49, 1024] → [B, sequence_len, features]
+        x = self.patch_proj(x)            # [B, 49, hidden_dim]
+        
+        x = self.transformer(x)           # [B, 49, hidden_dim]
+        x = x.mean(dim=1)                 # Global average pooling over sequence
+
+        out = self.classifier(x)          # [B, num_classes]
+        return out
+
  
 # Load the CSV file with image metadata
 data_path = CONFIG["data_dir"]
@@ -184,8 +214,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
 # Load and modify the model
-model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
-model.heads = nn.Linear(model.heads.in_features, 14)
+model = DenseNetWithTransformer(num_classes=14).to(CONFIG["device"])
 model = model.to(CONFIG["device"])
 
 # Define loss function and optimizer
