@@ -313,9 +313,9 @@ for epoch in range(CONFIG["epochs"]):
         wandb.save(checkpoint_path)
     else:
         patience_counter += 1
-        if patience_counter >= CONFIG["patience"]:
-            print("Early stopping triggered.")
-            break
+        # if patience_counter >= CONFIG["patience"]:
+        #     print("Early stopping triggered.")
+        #     break
 
 # Evaluate the best model
 best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
