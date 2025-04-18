@@ -22,7 +22,7 @@ CONFIG = {
     "model": "pig_net",
     "batch_size": 16,
     "learning_rate": 0.001,
-    "epochs": 20,
+    "epochs": 25,
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
