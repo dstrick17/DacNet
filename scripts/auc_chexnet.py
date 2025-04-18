@@ -17,10 +17,10 @@ import time
 # Configuration settings
 CONFIG = {
     "model": "auc_chexnet",
-    "batch_size": 32,
-    "learning_rate": 0.0001,  # Adjusted learning rate
-    "epochs": 20,  # Adjusted epochs
-    "num_workers": 8,
+    "batch_size": 16,
+    "learning_rate": 0.0001,  
+    "epochs": 20, 
+    "num_workers": 4,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
     "wandb_project": "X-Ray Classification",
@@ -190,8 +190,6 @@ def validate(model, valloader, criterion, device):
     val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
     return val_loss, val_auc, val_f1, auc_dict, f1_dict
 
-
- 
 
  # Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
