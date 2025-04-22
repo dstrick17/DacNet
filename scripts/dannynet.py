@@ -1,8 +1,6 @@
-# Improvements:
-# - changed image transformation to image size intstead of 224 !!!!!!!!!!!!!!!!!
-# - Added moderate data augmentation (rotation, brightness, contrast)
-# - Replaced BCEWithLogitsLoss with FocalLoss to improve class imbalance handling
-# - Added positive prediction count logging in evaluation
+# enabled Wandb to track scheduler, optimizer, model, augmentation
+# editied preds_binary to check different F1 thresholds
+######## source ~/chexnet310/bin/activate
 
 import os
 import pandas as pd
@@ -15,17 +13,17 @@ from sklearn.model_selection import train_test_split
 import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import wandb
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import roc_auc_score, f1_score, precision_recall_curve
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
 import time
 
 CONFIG = {
     "model": "danny_net",
-    "batch_size": 64,
-    "learning_rate": 0.001,
-    "epochs": 1,
-    "num_workers": 8,
+    "batch_size": 16,
+    "learning_rate": 0.00005,
+    "epochs": 9,
+    "num_workers": 2,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
     "wandb_project": "X-Ray Classification",
@@ -34,48 +32,31 @@ CONFIG = {
     "image_size": 224,
 }
 
+# Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
-    transforms.Resize(224),  
+    transforms.RandomResizedCrop(224),
     transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(7),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2),
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
 ])
 
 transform_test = transforms.Compose([
-    transforms.Resize(224),  
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2):
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-
-    def forward(self, inputs, targets):
-        BCE_loss = nn.functional.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
-        pt = torch.exp(-BCE_loss)
-        F_loss = self.alpha * (1 - pt) ** self.gamma * BCE_loss
-        return F_loss.mean()
-
-# Load and modify the model
+ # Load and modify the model
 model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
 model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
 
+
 # Define loss function and optimizer
-criterion = FocalLoss()
-optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
-# betas=(0.9, 0.999) - this is default in pytorch
-
+criterion = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay. # betas=(0.9, 0.999) - this is default in pytorch
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
-
-
 
 # Load the CSV file with image metadata
 data_path = CONFIG["data_dir"]
@@ -84,7 +65,6 @@ df = pd.read_csv(csv_file)
 
 # Get list of all image folders from images_001 to images_012
 image_folders = [os.path.join(data_path, f"images_{str(i).zfill(3)}", "images") for i in range(1, 13)]
-
 # Create a dictionary mapping image filenames to their folder paths
 image_to_folder = {}
 for folder in image_folders:
@@ -95,7 +75,6 @@ for folder in image_folders:
 
 # Filter the CSV to include only images that are present in the folders
 df = df[df['Image Index'].isin(image_to_folder.keys())]
-df = df[df['View Position'].isin(['PA', 'AP'])]
 
 # Unique patient IDs
 unique_patients = df['Patient ID'].unique()
@@ -167,90 +146,95 @@ trainloader = DataLoader(train_dataset, batch_size=CONFIG["batch_size"], shuffle
 valloader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 testloader = DataLoader(test_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 
-# Evaluation function
-def evaluate(model, testloader, criterion, device, desc="[Test]"):
+
+def get_optimal_thresholds(labels, preds):
+    thresholds = []
+    for i in range(preds.shape[1]):
+        precision, recall, thresh = precision_recall_curve(labels[:, i], preds[:, i])
+        f1_scores = 2 * (precision * recall) / (precision + recall + 1e-8)
+        best_threshold = thresh[np.argmax(f1_scores)] if len(thresh) > 0 else 0.5
+        thresholds.append(best_threshold)
+    return thresholds
+
+def evaluate(model, loader, criterion, device, desc="[Test]"):
     model.eval()
     running_loss = 0.0
-
-    all_labels = []
-    all_preds = []
-
+    all_labels, all_preds = [], []
     with torch.no_grad():
-        progress_bar = tqdm(testloader, desc=desc, leave=True)
-
-        for inputs, labels in progress_bar:
+        for inputs, labels in tqdm(loader, desc=desc):
             inputs, labels = inputs.to(device), labels.to(device)
-
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
             preds = torch.sigmoid(outputs)
-
             all_labels.append(labels.cpu())
             all_preds.append(preds.cpu())
 
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
-    test_loss = running_loss / len(testloader)
+    thresholds = get_optimal_thresholds(all_labels, all_preds)
 
-    # Compute AUC for each class
+    preds_binary = np.zeros_like(all_preds)
+    for i in range(all_preds.shape[1]):
+        preds_binary[:, i] = (all_preds[:, i] > thresholds[i]).astype(int)
+
     auc_scores = [roc_auc_score(all_labels[:, i], all_preds[:, i]) for i in range(14)]
-    avg_auc = np.mean(auc_scores)
-
-    for i, disease in enumerate(disease_list):
-        print(f"{desc} {disease} AUC-ROC: {auc_scores[i]:.4f}")
-
-    auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
-
-    # Compute binary predictions for all classes
-    preds_binary = (all_preds > 0.5).astype(int)
-
-    # Per-class F1 scores
     f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
+
+    avg_auc = np.mean(auc_scores)
     avg_f1 = np.mean(f1_scores)
 
-    # Print per-class F1
     for i, disease in enumerate(disease_list):
-        print(f"{desc} {disease} F1 Score: {f1_scores[i]:.4f}")
+        print(f"{desc} {disease} AUC: {auc_scores[i]:.4f} | F1: {f1_scores[i]:.4f}")
 
-    # Build F1 dictionary
-    f1_dict = {disease_list[i]: f1_scores[i] for i in range(14)}
-    print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
+    print(f"{desc} Avg AUC: {avg_auc:.4f}, Avg F1: {avg_f1:.4f}")
 
-    return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
-
+    return {
+        "loss": running_loss / len(loader),
+        "avg_auc": avg_auc,
+        "avg_f1": avg_f1,
+        "auc_dict": dict(zip(disease_list, auc_scores)),
+        "f1_dict": dict(zip(disease_list, f1_scores)),
+        "thresholds": dict(zip(disease_list, thresholds))
+    }
 
 
 # Training function
 def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
-
     running_loss = 0.0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
-
     for i, (inputs, labels) in enumerate(progress_bar):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
-
         loss.backward()
         optimizer.step()
-
         running_loss += loss.item()
         progress_bar.set_postfix({"loss": running_loss / (i + 1)})
-
     train_loss = running_loss / len(trainloader)
     return train_loss
 
 def validate(model, valloader, criterion, device):
-    val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
-    return val_loss, val_auc, val_f1, auc_dict, f1_dict
+    return evaluate(model, valloader, criterion, device, desc="[Validate]")
 
  # Training loop with WandB and timestamped checkpoints
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
 wandb.watch(model, log="all")
+
+transform_names = [t.__class__.__name__ for t in transform_train.transforms]
+
+wandb.config.update({
+    "model_architecture": "DenseNet121",
+    "classifier_head": str(model.classifier),  # logs the Linear layer details
+    "optimizer": optimizer.__class__.__name__,
+    "loss_fn": criterion.__class__.__name__,
+    "scheduler": scheduler.__class__.__name__,
+    "augmentation": " + ".join(transform_names)
+})
+
 
 run_id = wandb.run.id
 checkpoint_dir = os.path.join("models", run_id)
@@ -259,34 +243,33 @@ os.makedirs(checkpoint_dir, exist_ok=True)
 best_val_auc = 0.0
 patience_counter = 0
 
+
 for epoch in range(CONFIG["epochs"]):
     train_loss = train(epoch, model, trainloader, optimizer, criterion, CONFIG)
-    val_loss, val_auc, val_f1, auc_dict, f1_dict = validate(model, valloader, criterion, CONFIG["device"])
-    scheduler.step(val_loss)
+    val_stats = validate(model, valloader, criterion, CONFIG["device"])
+    scheduler.step(val_stats["loss"])
 
     wandb.log({
         "epoch": epoch + 1,
         "train_loss": train_loss,
-        "val_loss": val_loss,
-        "val_auc": val_auc,
-        "val_f1": val_f1,
-        "f1_dict": f1_dict,
-        "auc_dict": auc_dict,
-    })
+        "val_loss": val_stats["loss"],
+        "val_auc": val_stats["avg_auc"],
+        "val_f1": val_stats["avg_f1"],
+        "f1_dict": val_stats["f1_dict"],
+        "auc_dict": val_stats["auc_dict"],
+        "optimal_thresholds": val_stats["thresholds"],
+})
 
-    if val_auc > best_val_auc:
-        best_val_auc = val_auc
+    if val_stats["avg_auc"] > best_val_auc:
+        best_val_auc = val_stats["avg_auc"]
 
         patience_counter = 0
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-
         checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
         torch.save(model.state_dict(), checkpoint_path)
         wandb.save(checkpoint_path)
-
     else:
         patience_counter += 1
-
         if patience_counter >= CONFIG["patience"]:
             print("Early stopping triggered.")
             break
@@ -294,14 +277,13 @@ for epoch in range(CONFIG["epochs"]):
 # Evaluate the best model
 best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
 model.load_state_dict(torch.load(best_checkpoint_path))
-test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
-
+test_stats = evaluate(model, testloader, criterion, CONFIG["device"])
 wandb.log({
-    "test_loss": test_loss,
-    "test_auc": test_auc,
-    "test_f1": test_f1,
-    "test_auc_dict": auc_dict,
-    "test_f1_dict": f1_dict
+    "test_loss": test_stats["loss"],
+    "test_auc": test_stats["avg_auc"],
+    "test_f1": test_stats["avg_f1"],
+    "test_auc_dict": test_stats["auc_dict"],
+    "test_f1_dict": test_stats["f1_dict"]
 })
 
 wandb.finish()
