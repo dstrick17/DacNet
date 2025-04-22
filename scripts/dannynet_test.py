@@ -19,6 +19,7 @@ from torchvision.models import densenet121, DenseNet121_Weights
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import time
 import math
+tqdm._instances.clear() 
 
 CONFIG = {
     "model": "danny_net",
@@ -266,7 +267,15 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
     running_loss = 0.0
-    progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
+    progress_bar = tqdm(
+            trainloader,
+            desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
+            position=0,
+            leave=True,
+            mininterval=0.5,
+            ascii=True,
+            bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
+            )
     for i, (inputs, labels) in enumerate(progress_bar):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
@@ -275,7 +284,16 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        progress_bar.set_postfix({"loss": running_loss / (i + 1)})
+        preds = torch.sigmoid(outputs)
+        predicted = (preds > 0.5).float()
+        
+        correct += (predicted == labels).sum().item()
+        total += labels.numel()
+
+        progress_bar.set_postfix({
+            "loss": f"{running_loss/(i+1):.4f}",
+            "pos_acc": f"{(100.*correct/total):.1f}%"
+            })
     train_loss = running_loss / len(trainloader)
     return train_loss
 
