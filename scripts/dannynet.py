@@ -1,7 +1,3 @@
-# enabled Wandb to track scheduler, optimizer, model, augmentation
-# editied preds_binary to check different F1 thresholds
-######## source ~/chexnet310/bin/activate
-
 import os
 import pandas as pd
 from PIL import Image
@@ -19,10 +15,10 @@ from torchvision.models import densenet121, DenseNet121_Weights
 import time
 
 CONFIG = {
-    "model": "danny_net",
-    "batch_size": 16,
+    "model": "dannynet",
+    "batch_size": 8,
     "learning_rate": 0.00005,
-    "epochs": 9,
+    "epochs": 25,
     "num_workers": 2,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
@@ -36,10 +32,10 @@ CONFIG = {
 transform_train = transforms.Compose([
     transforms.RandomResizedCrop(224),
     transforms.RandomHorizontalFlip(),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1),
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalization
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
-
 transform_test = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -52,10 +48,28 @@ model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
 model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, inputs, targets):
+        bce_loss = self.bce(inputs, targets)
+        pt = torch.exp(-bce_loss)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
 
 # Define loss function and optimizer
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay. # betas=(0.9, 0.999) - this is default in pytorch
+criterion = FocalLoss(alpha=1, gamma=2)
+optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay. # betas=(0.9, 0.999) - this is default in pytorch
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
 
 # Load the CSV file with image metadata
