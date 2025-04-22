@@ -267,6 +267,9 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
     running_loss = 0.0
+    correct = 0  # Initialize the counter for correct predictions
+    total = 0    # Initialize the counter for total predictions
+    
     progress_bar = tqdm(
             trainloader,
             desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]",
