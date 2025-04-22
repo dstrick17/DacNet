@@ -57,10 +57,10 @@ class DenseNetTransformer(nn.Module):
         super().__init__()
         base_model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         
-        # Use earlier features for finer spatial information
+        # Use features up to the transition block
         self.feature_extractor = nn.Sequential(
-            base_model.features[:6],  # Outputs [B, 256, 28, 28]
-            nn.Conv2d(256, hidden_dim, 1)  # Reduce channels to hidden_dim
+            base_model.features[:7],  # Changed from :6 to :7 to get correct channel count
+            nn.Conv2d(128, hidden_dim, 1)  # Changed input channels from 256 to 128
         )
         
         # Positional encoding for spatial information
