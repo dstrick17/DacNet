@@ -59,8 +59,8 @@ class DenseNetTransformer(nn.Module):
         
         # Correct feature extraction - using features up to the first transition block
         self.feature_extractor = nn.Sequential(
-            base_model.features[:5],  # Outputs 128 channels at 56x56
-            nn.Conv2d(128, hidden_dim, kernel_size=1)  # Project to transformer dimension
+            base_model.features[:5],  # Outputs 256 channels at 56x56
+            nn.Conv2d(256, hidden_dim, kernel_size=1)  # Updated to expect 256 channels
         )
         
         # Positional encoding for spatial information
