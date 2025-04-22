@@ -57,11 +57,10 @@ class DenseNetTransformer(nn.Module):
         super().__init__()
         base_model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         
-        # Correct feature extraction - using features up to the first dense block
+        # Correct feature extraction - using features up to the first transition block
         self.feature_extractor = nn.Sequential(
-            base_model.features[:4],  # This gives us 128 channels at 56x56
-            nn.Conv2d(128, hidden_dim, kernel_size=3, stride=2, padding=1),  # Downsample to 28x28
-            nn.ReLU(inplace=True)
+            base_model.features[:5],  # Outputs 128 channels at 56x56
+            nn.Conv2d(128, hidden_dim, kernel_size=1)  # Project to transformer dimension
         )
         
         # Positional encoding for spatial information
@@ -80,9 +79,12 @@ class DenseNetTransformer(nn.Module):
 
     def forward(self, x):
         # Extract features with proper spatial resolution
-        x = self.feature_extractor(x)  # [B, hidden_dim, 28, 28]
+        x = self.feature_extractor(x)  # [B, 512, 56, 56]
         
-        x = x.flatten(2).permute(0, 2, 1)  # [B, 784, hidden_dim]
+        # Adaptive average pool to get to 28x28 if needed
+        x = nn.AdaptiveAvgPool2d(28)(x)  # [B, 512, 28, 28]
+        
+        x = x.flatten(2).permute(0, 2, 1)  # [B, 784, 512]
         
         # Add positional encoding
         x = self.pos_encoder(x)
