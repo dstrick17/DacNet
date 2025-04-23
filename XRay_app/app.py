@@ -9,7 +9,7 @@ st.set_page_config(page_title="X-ray Diagnosis Demo", layout="centered")
 st.title("🩻 X-ray Multi-Label Diagnosis App (CheXNet)")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model_path = "/projectnb/dl4ds/projects/dca_project/scripts/models/59o12z7z-distinctive-snowflake-21/distinctive-snowflake-21.pth"
+model_path = "model/dannynet-55-best_model_20250422-211522.pth"
 model = load_model(model_path, device)
 
 uploaded_file = st.file_uploader("Upload a chest X-ray", type=["jpg", "jpeg", "png"])
