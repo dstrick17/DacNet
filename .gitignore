@@ -10,7 +10,6 @@
 /models/old_models/
 /**/wandb/
 /**/__pycache__/
-/**/*.pth
 /scripts/output.txt/
 /scripts/error.txt/
 
