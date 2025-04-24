@@ -16,7 +16,7 @@ import time
 
 # Configuration settings
 CONFIG = {
-    "model": "auc_chexnet", # Lowered F1 threshold
+    "model": "auc_chexnet", # Lead to glowing-voice-35
     "batch_size": 16,
     "learning_rate": 0.0001,  
     "epochs": 20, 
@@ -144,7 +144,7 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
 
     # Compute binary predictions for all classes
-    preds_binary = (all_preds > 0.3).astype(int)
+    preds_binary = (all_preds > 0.5).astype(int)
     # Per-class F1 scores
     f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
     avg_f1 = np.mean(f1_scores)
