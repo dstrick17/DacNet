@@ -1,6 +1,5 @@
 # Ignore datasets
 /nih_data/
-/pneumonia_data/
 
 # Ignore Python virtual environments
 /venv/
@@ -10,5 +9,4 @@
 /models/old_models/
 /**/wandb/
 /**/__pycache__/
-/scripts/output.txt/
-/scripts/error.txt/
+.DS_Store
