@@ -184,34 +184,42 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 | Pneumothorax        | 0.806              | 0.841             | **0.8887**        | 0.875    | 0.821           | 0.827              |
 
 ---
-| Metric | Disease | DannyNet | ViT Transformer | Replicate CheXNet |
-|--------|---------|----------|------------------|--------------------|
-| Loss   | AVERAGE | **0.0416** | 0.1589           | 0.1661             |
-| AUC    | AVERAGE | **0.8527** | 0.7940           | 0.7928             |
-| F1     | AVERAGE | **0.3861** | 0.1114           | 0.0763             |
+### Average metrics across all diseases for each model
+| Metric  | DannyNet | ViT Transformer | Replicate CheXNet |
+|---------|----------|------------------|--------------------|
+| Loss    | **0.0416** | 0.1589           | 0.1661             |
+| AUC     | **0.8527** | 0.7940           | 0.7928             |
+| F1      | **0.3861** | 0.1114           | 0.0763             |
 ---
-| Metric | Disease             | DannyNet | ViT Transformer | Replicate CheXNet |
-|--------|---------------------|----------|------------------|--------------------|
-| F1     | AVERAGE             | **0.386** | 0.111           | 0.076              |
-| F1     | Atelectasis         | **0.421** | 0.127           | 0.026              |
-| F1     | Cardiomegaly        | **0.532** | 0.264           | 0.423              |
-| F1     | Consolidation       | **0.226** | 0               | 0                  |
-| F1     | Edema               | **0.286** | 0.004           | 0                  |
-| F1     | Effusion            | **0.623** | 0.427           | 0.459              |
-| F1     | Emphysema           | **0.516** | 0.079           | 0                  |
-| F1     | Fibrosis            | **0.127** | 0               | 0                  |
-| F1     | Hernia              | **0.750** | 0               | 0                  |
-| F1     | Infiltration        | **0.395** | 0.193           | 0.061              |
-| F1     | Mass                | **0.477** | 0.213           | 0.079              |
-| F1     | Nodule              | **0.352** | 0.041           | 0                  |
-| F1     | Pleural Thickening  | **0.258** | 0               | 0                  |
-| F1     | Pneumonia           | **0.082** | 0               | 0                  |
-| F1     | Pneumothorax        | **0.360** | 0.211           | 0.021              |
+### 📊 F1 Score Comparison for Each Model
+
+| Disease             | DannyNet | ViT Transformer  | Replicate CheXNet |
+|---------------------|----------|------------------|--------------------|
+| **AVERAGE**         | **0.386** | 0.111           | 0.076              |
+| Atelectasis         | **0.421** | 0.127           | 0.026              |
+| Cardiomegaly        | **0.532** | 0.264           | 0.423              |
+| Consolidation       | **0.226** | 0               | 0                  |
+| Edema               | **0.286** | 0.004           | 0                  |
+| Effusion            | **0.623** | 0.427           | 0.459              |
+| Emphysema           | **0.516** | 0.079           | 0                  |
+| Fibrosis            | **0.127** | 0               | 0                  |
+| Hernia              | **0.750** | 0               | 0                  |
+| Infiltration        | **0.395** | 0.193           | 0.061              |
+| Mass                | **0.477** | 0.213           | 0.079              |
+| Nodule              | **0.352** | 0.041           | 0                  |
+| Pleural Thickening  | **0.258** | 0               | 0                  |
+| Pneumonia           | **0.082** | 0               | 0                  |
+| Pneumothorax        | **0.360** | 0.211           | 0.021              |
+
 
 ---
 ## Test-Images
-Folder that contains a labeled chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
+Folder that contains labeled chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
 
+---
+## project_EDA.ipynb
+
+Jupyter Notebook that conducts Exploratory Data Analysis such as how many different diseases are present in the dataset and the proportion of each disease in the dataset.
 ---
 
 ## Methodology
