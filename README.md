@@ -1,8 +1,30 @@
-
 # Chest X-Ray Classification Using Deep Learning
+
+## Clone & Set Up
+```sh
+git clone https://github.com/your-username/Deep-Learning-Project.git
+cd Deep-Learning-Project
+pip install -r requirements.txt
+```
+
+---
 
 ## Try Our Model
 Test our final model on [Hugging Face Spaces: DannyNet Demo](https://huggingface.co/spaces/cfgpp/Danny_Net_Demo)
+
+---
+
+## Running the Code
+To train each model, navigate to the `scripts` directory and run the corresponding script. For example:
+```sh
+python scripts/dannynet.py
+```
+
+Evaluation results such as AUC and F1 scores will be printed in the console and logged to Weights & Biases (WandB) if your account is configured. The best model checkpoint will be saved in a `models/<run_id>` folder.
+
+Example output screenshot:
+![Results Preview](test-images/results_preview.png)  
+*(Add this image manually to the test-images/ directory or update the path accordingly.)*
 
 ---
 
@@ -13,22 +35,28 @@ We evaluate whether deep learning models, particularly CNNs and Transformers, ca
 
 ---
 
-##  Project Structure
+## Project Structure
 ```text
 Deep-Learning-Project/ 
-  ├── scripts/ │ 
+  ├── eda.ipynb
+  ├── scripts/ 
     ├── dannynet.py 
     ├── replicate_chexnet.py
-    │── vit_transformer.py 
+    ├── vit_transformer.py 
+  ├── XRay_app/ 
+    ├── app.py
+    ├── utils/
+      ├── model_utils.py
+      ├── preprocessing.py
   ├── test-images/
     ├── cardiomegaly.png
     ├── hernia-infiltration.png 
     ├── mass-nodule.png 
-  ├── notebooks/ 
   ├── .gitignore 
   ├── requirements.txt 
-  ├──  README.md
+  ├── README.md
 ```
+
 ---
 
 ## Dataset
@@ -47,9 +75,9 @@ Deep-Learning-Project/
 ---
 
 ## Models
-We present three models that were trained as separate python scripts
+We present three models that were trained as separate python scripts located in the scripts folder
 
-### `replicate_chexnet.py` – Baseline Reimplementation of CheXNet
+### 1. `replicate_chexnet.py` – Baseline Reimplementation of CheXNet
 Faithful reimplementation of the original CheXNet architecture using standard PyTorch tools.
 
 **Key Features:**
@@ -79,7 +107,7 @@ Serves as a baseline for evaluating improvements from custom architectures like 
 
 ---
 
-### `dannynet.py` – Final Custom CNN Model (Best Performer)
+### 2. `dannynet.py` – Final Custom CNN Model (Best Performer)
 A DenseNet-121-based CNN enhanced with Focal Loss and advanced augmentations to handle the class imbalance in the dataset.
 
 **Key Features:**
@@ -105,12 +133,12 @@ A DenseNet-121-based CNN enhanced with Focal Loss and advanced augmentations to 
 - Learning rate: 0.00005
 - Seed: 42
 
-** Performance:**
+**Performance:**
 Highest average AUC and F1 across all models; used in final deployment/demo.
 
 ---
 
-### `vit_transformer.py` – Vision Transformer for Chest X-Ray Classification
+### 3. `vit_transformer.py` – Vision Transformer for Chest X-Ray Classification
 Explores transformers for medical image classification using Hugging Face's `ViT-Base Patch16 224` model.
 
 **Key Features:**
@@ -131,17 +159,19 @@ Explores transformers for medical image classification using Hugging Face's `ViT
 - 20 epochs max
 - Early stopping (patience=5)
 
-**Batch Size:** 16
+**Batch Size:** 16  
 **Image Size:** 224x224
 
 **Why Transformers?**
-ViTs treat images as sequences of patches and apply self-attention to model global image features—an advantage when working with high-resolution images like chest X-rays.
+ViTs treat images as sequences of patches and apply self-attention to model global image features, which can be advantageous for complex medical images.
 
 ---
 
 ## Test-Images
-3 chest x-ray png files for the user to easily download and test on the huggingface streamlit app
+Folder that contains 3 chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
+
 ---
+
 ## Methodology
 - **Data Preprocessing:** Resize, normalize, and augment X-ray images
 - **Model Selection:** CNN and Transformer variants
@@ -149,15 +179,6 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 - **Evaluation:** Per-class AUC-ROC and F1 metrics
 - **Comparison:** Benchmarks against original CheXNet results
 
----
 
-## Installation & Setup
-### Clone the Repository
-```sh
-git clone https://github.com/your-username/Deep-Learning-Project.git
-cd Deep-Learning-Project
-```
-
----
 
 
