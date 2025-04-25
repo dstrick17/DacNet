@@ -11,7 +11,6 @@ pip install -r requirements.txt
 
 ## Try Our Model
 Test our final model on [Hugging Face Spaces: DannyNet Demo](https://huggingface.co/spaces/cfgpp/Danny_Net_Demo)
-
 ---
 
 ## Running the Code
@@ -166,9 +165,52 @@ Explores transformers for medical image classification using Hugging Face's `ViT
 ViTs treat images as sequences of patches and apply self-attention to model global image features, which can be advantageous for complex medical images.
 
 ---
+**Performance vs older models and publications on Test AUC scores per disease**
+| Pathology           | Wang et al. (2017) | Yao et al. (2017) | original CheXNet | dannynet.py | vit_transformer.py | replicate_chexnet.py |
+|---------------------|--------------------|-------------------|------------------|----------|------------------|--------------------|
+| Atelectasis         | 0.716              | 0.772             | 0.8094           | **0.817** | 0.774           | 0.762              |
+| Cardiomegaly        | 0.807              | 0.904             | 0.9248           | **0.932** | 0.89            | 0.922              |
+| Consolidation       | 0.708              | 0.788             | **0.7901**        | 0.783    | 0.789           | 0.746              |
+| Edema               | 0.835              | 0.882             | 0.8878           | **0.896** | 0.876           | 0.864              |
+| Effusion            | 0.784              | 0.859             | 0.8638           | **0.905** | 0.857           | 0.883              |
+| Emphysema           | 0.815              | 0.829             | 0.9371           | **0.963** | 0.828           | 0.85               |
+| Fibrosis            | 0.769              | 0.767             | 0.8047           | **0.814** | 0.772           | 0.766              |
+| Hernia              | 0.767              | 0.914             | 0.9164           | **0.997** | 0.872           | 0.925              |
+| Infiltration        | 0.609              | 0.695             | **0.7345**        | 0.708    | 0.7             | 0.673              |
+| Mass                | 0.706              | 0.792             | 0.8676           | **0.919** | 0.783           | 0.824              |
+| Nodule              | 0.671              | 0.717             | 0.7802           | **0.789** | 0.673           | 0.646              |
+| Pleural Thickening  | 0.708              | 0.765             | **0.8062**        | 0.801    | 0.766           | 0.756              |
+| Pneumonia           | 0.633              | 0.713             | **0.768**         | 0.74     | 0.713           | 0.656              |
+| Pneumothorax        | 0.806              | 0.841             | **0.8887**        | 0.875    | 0.821           | 0.827              |
 
+---
+| Metric | Disease | DannyNet | ViT Transformer | Replicate CheXNet |
+|--------|---------|----------|------------------|--------------------|
+| Loss   | AVERAGE | **0.0416** | 0.1589           | 0.1661             |
+| AUC    | AVERAGE | **0.8527** | 0.7940           | 0.7928             |
+| F1     | AVERAGE | **0.3861** | 0.1114           | 0.0763             |
+---
+| Metric | Disease             | DannyNet | ViT Transformer | Replicate CheXNet |
+|--------|---------------------|----------|------------------|--------------------|
+| F1     | AVERAGE             | **0.386** | 0.111           | 0.076              |
+| F1     | Atelectasis         | **0.421** | 0.127           | 0.026              |
+| F1     | Cardiomegaly        | **0.532** | 0.264           | 0.423              |
+| F1     | Consolidation       | **0.226** | 0               | 0                  |
+| F1     | Edema               | **0.286** | 0.004           | 0                  |
+| F1     | Effusion            | **0.623** | 0.427           | 0.459              |
+| F1     | Emphysema           | **0.516** | 0.079           | 0                  |
+| F1     | Fibrosis            | **0.127** | 0               | 0                  |
+| F1     | Hernia              | **0.750** | 0               | 0                  |
+| F1     | Infiltration        | **0.395** | 0.193           | 0.061              |
+| F1     | Mass                | **0.477** | 0.213           | 0.079              |
+| F1     | Nodule              | **0.352** | 0.041           | 0                  |
+| F1     | Pleural Thickening  | **0.258** | 0               | 0                  |
+| F1     | Pneumonia           | **0.082** | 0               | 0                  |
+| F1     | Pneumothorax        | **0.360** | 0.211           | 0.021              |
+
+---
 ## Test-Images
-Folder that contains 3 chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
+Folder that contains a labeled chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
 
 ---
 
