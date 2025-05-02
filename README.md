@@ -166,22 +166,22 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 
 ---
 **Performance vs older models and publications on Test AUC scores per disease**
-| Pathology           | Wang et al. (2017) | Yao et al. (2017) | original CheXNet | dannynet.py | vit_transformer.py | replicate_chexnet.py |
-|---------------------|--------------------|-------------------|------------------|----------|------------------|--------------------|
-| Atelectasis         | 0.716              | 0.772             | 0.8094           | **0.817** | 0.774           | 0.762              |
-| Cardiomegaly        | 0.807              | 0.904             | 0.9248           | **0.932** | 0.89            | 0.922              |
-| Consolidation       | 0.708              | 0.788             | **0.7901**        | 0.783    | 0.789           | 0.746              |
-| Edema               | 0.835              | 0.882             | 0.8878           | **0.896** | 0.876           | 0.864              |
-| Effusion            | 0.784              | 0.859             | 0.8638           | **0.905** | 0.857           | 0.883              |
-| Emphysema           | 0.815              | 0.829             | 0.9371           | **0.963** | 0.828           | 0.85               |
-| Fibrosis            | 0.769              | 0.767             | 0.8047           | **0.814** | 0.772           | 0.766              |
-| Hernia              | 0.767              | 0.914             | 0.9164           | **0.997** | 0.872           | 0.925              |
-| Infiltration        | 0.609              | 0.695             | **0.7345**        | 0.708    | 0.7             | 0.673              |
-| Mass                | 0.706              | 0.792             | 0.8676           | **0.919** | 0.783           | 0.824              |
-| Nodule              | 0.671              | 0.717             | 0.7802           | **0.789** | 0.673           | 0.646              |
-| Pleural Thickening  | 0.708              | 0.765             | **0.8062**        | 0.801    | 0.766           | 0.756              |
-| Pneumonia           | 0.633              | 0.713             | **0.768**         | 0.74     | 0.713           | 0.656              |
-| Pneumothorax        | 0.806              | 0.841             | **0.8887**        | 0.875    | 0.821           | 0.827              |
+| Pathology           | original CheXNet | dannynet.py | vit_transformer.py | replicate_chexnet.py |
+|---------------------|------------------|----------|------------------|--------------------|
+| Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
+| Cardiomegaly        | 0.9248           | **0.932** | 0.89            | 0.922              |
+| Consolidation       | **0.7901**        | 0.783    | 0.789           | 0.746              |
+| Edema               | 0.8878           | **0.896** | 0.876           | 0.864              |
+| Effusion            | 0.8638           | **0.905** | 0.857           | 0.883              |
+| Emphysema           | 0.9371           | **0.963** | 0.828           | 0.85               |
+| Fibrosis            | 0.8047           | **0.814** | 0.772           | 0.766              |
+| Hernia              | 0.9164           | **0.997** | 0.872           | 0.925              |
+| Infiltration        | **0.7345**        | 0.708    | 0.7             | 0.673              |
+| Mass                | 0.8676           | **0.919** | 0.783           | 0.824              |
+| Nodule              | 0.7802           | **0.789** | 0.673           | 0.646              |
+| Pleural Thickening  | **0.8062**        | 0.801    | 0.766           | 0.756              |
+| Pneumonia           | **0.768**         | 0.74     | 0.713           | 0.656              |
+| Pneumothorax        | **0.8887**        | 0.875    | 0.821           | 0.827              |
 
 ---
 ### Average metrics across all diseases for each model
