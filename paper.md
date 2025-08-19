@@ -23,7 +23,7 @@ authors:
 
 bibliography: paper.bib
 
-
+---
 # Summary
 This project aimed to rigorously reproduce and extend CheXNet, a landmark deep learning
 model in medical imaging. Through our efforts, we demonstrated that meaningful improvements
