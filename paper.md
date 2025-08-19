@@ -18,6 +18,8 @@ authors:
     equal-contrib: true
     affiliation: 1
   - name: Anthony Tse Huang
+    equal-contrib: true
+    affiliation: 1
 
 bibliography: paper.bib
 
@@ -58,9 +60,9 @@ set out to replicate the original CheXNet model as closely as possible, evaluate
 performance metrics such as AUC-ROC and F1 scores across all 14 disease classes, and
 explore whether newer deep learning techniques, particularly Vision Transformers (ViTs),
 could offer performance improvements over traditional convolutional neural networks. All
-code for our models and evaluation pipeline is publicly available in our GitHub Repository
-- https://github.com/dstrick17/DacNet. While our primary goal was to
-replicate the original CheXNet study, we also recognize the importance of its successor,
+code for our models and evaluation pipeline is publicly available in our [GitHub repository](https://github.com/dstrick17/DacNet) under an open-source MIT License. 
+
+While our primary goal was to replicate the original CheXNet study, we also recognize the importance of its successor,
 CheXNeXt, which validated a similar model against board-certified radiologists on a curated
 internal dataset [@rajpurkar2018chexnext]. Although the test set used in CheXNeXt is not publicly available,
 its findings emphasize the clinical relevance of these models and reinforce the need for
@@ -120,7 +122,7 @@ for 9 out of 14 diseases.
 | AUC     | **0.8527** | 0.7940           | 0.7928             |
 | F1      | **0.3861** | 0.1114           | 0.0763             |
 ---
-### 📊 F1 Score Comparison for Each Model
+### F1 Score Comparison for Each Model
 
 | Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
 |---------------------|----------|------------------|--------------------|
@@ -142,17 +144,15 @@ for 9 out of 14 diseases.
 
 # Figures
 
-## Figure 1: Web app interface showing chest X-ray input, model predictions, and Grad-CAM visualization from our Hugging Face demo.
-![](figures/Figure1.png)
 
-## Figure 2: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation AUC score across all diseases is shown across the entire training run.
-![](figures/Figure2.png) 
+![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
 
-## Figure 3: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation F1 score across all diseases is shown across the entire training run.
-![](figures/Figure3.png)
+![Validation AUC across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure2.png)
 
-## Figure 4: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation loss across all diseases is shown across the entire training run.
-![](figures/Figure4.png)
+![Validation F1 across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure3.png)
+
+![Validation loss across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure4.png)
+
 
 ---
 # Acknowledgements
