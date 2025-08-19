@@ -2,7 +2,7 @@
 title: 'An Open-Source Reproduction and Enhancement of CheXNet for Chest X-ray Disease Classification'
 tags:
   - Python
-  - Deep Learnings
+  - Deep Learning
   - PyTorch
   - Medical Imaging
   - Computer Vision
@@ -19,6 +19,9 @@ authors:
     affiliation: 1
   - name: Anthony Tse Huang
 
+bibliography: paper.bib
+
+
 # Summary
 This project aimed to rigorously reproduce and extend CheXNet, a landmark deep learning
 model in medical imaging. Through our efforts, we demonstrated that meaningful improvements
@@ -26,7 +29,7 @@ to the original architecture can be achieved by incorporating techniques develop
 since the paper’s publication. Specifically, we found that the use of Focal Loss, the AdamW
 optimizer with weight decay, Color Jitter for data augmentation, ReduceLROnPlateau
 scheduling, and per-disease F1 threshold tuning substantially improved model stability and
-performance across all 14 thoracic disease classes. Our model, "DannyNet," achieved a
+performance across all 14 thoracic disease classes. Our model, "DacNet," achieved a
 strong balance between interpretability and predictive power, reaching an average AUC of
 0.85 and an F1 score of 0.39. These results highlight the potential for targeted enhancements
 to significantly improve performance on imbalanced and clinically relevant datasets like NIH
@@ -44,27 +47,27 @@ interpretable, and equitable AI tools in healthcare.
 Chest X-ray classification is a crucial task in medical image analysis, where deep learning
 models are trained to detect various thoracic diseases from radiographic scans. A landmark
 study in this field, known as CheXNet, introduced a 121-layer DenseNet convolutional neural
-network that reportedly outperformed radiologists in detecting pneumonia [1]. Their work
+network that reportedly outperformed radiologists in detecting pneumonia [@rajpurkar2017chexnet]. Their work
 used the NIH ChestX-ray14 dataset, a publicly available dataset of over 100,000 frontal-view
-chest X-rays labeled with up to 14 disease classes [2]. The success of CheXNet has inspired
+chest X-rays labeled with up to 14 disease classes [@nih2017chestxray]. The success of CheXNet has inspired
 further research, as it represents a significant step toward using artificial intelligence to assist
-in clinical diagnosis, especially in regions where access to licensed radiologists is limited [3].
+in clinical diagnosis, especially in regions where access to licensed radiologists is limited [@hwang2023tuberculosis].
 In the midst of a reproducibility crisis in academia, independent researchers must reproduce
-groundbreaking studies like this in order to help guide future research [4]. In this project, we
+groundbreaking studies like this in order to help guide future research [@vannoorden2015reproducibility]. In this project, we
 set out to replicate the original CheXNet model as closely as possible, evaluate and improve
 performance metrics such as AUC-ROC and F1 scores across all 14 disease classes, and
 explore whether newer deep learning techniques, particularly Vision Transformers (ViTs),
 could offer performance improvements over traditional convolutional neural networks. All
 code for our models and evaluation pipeline is publicly available in our GitHub Repository
-- https://github.com/dstrick17/DannyNet. While our primary goal was to
+- https://github.com/dstrick17/DacNet. While our primary goal was to
 replicate the original CheXNet study, we also recognize the importance of its successor,
 CheXNeXt, which validated a similar model against board-certified radiologists on a curated
-internal dataset [5]. Although the test set used in CheXNeXt is not publicly available,
+internal dataset [@rajpurkar2018chexnext]. Although the test set used in CheXNeXt is not publicly available,
 its findings emphasize the clinical relevance of these models and reinforce the need for
 reproducible benchmarking in public datasets like NIH ChestX-ray14.
 Our key contributions are as follows: We performed a faithful replication of the CheXNet
 model, establishing a reproducible baseline using pretrained DenseNet-121 with standard
-training procedures. We proposed an improved model, DannyNet, which incorporates Focal Loss, the AdamWoptimizer, and advanced image augmentations like Color Jitter. It achieved
+training procedures. We proposed an improved model, DacNet, which incorporates Focal Loss, the AdamWoptimizer, and advanced image augmentations like Color Jitter. It achieved
 significantly higher F1 scores on rare classes compared to the baseline. We implemented
 per-class F1 threshold optimization to further boost classification accuracy, especially in
 multi-label settings. Unlike the original CheXNet study, which only reported an F1 score for
@@ -74,7 +77,7 @@ view of model strengths and limitations in multi-label medical image classificat
 explored the use of transformer-based models (ViT) for X-ray classification, benchmarking
 their performance against CNN-based architectures. Finally, we developed a Streamlit web
 app hosted on Hugging Face that takes a chest X-ray input, returns disease predictions
-using DannyNet, and overlays Grad-CAM heatmaps to visualize model attention.
+using DacNet, and overlays Grad-CAM heatmaps to visualize model attention.
 
 # Methods
 We built on DenseNet-121 but replaced the
@@ -87,11 +90,71 @@ We believe the focal loss contributed significantly to reducing test loss and im
 prediction confidence on minority classes. This model outperformed CheXNet in AUC
 for 9 out of 14 diseases.
 
-# Citations
-
 
 # Figures
 
-# Acknowledgements
+---
+**Performance vs older models and publications on Test AUC scores per disease**
+| Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
+|---------------------|------------------|----------|-------------------|--------------------|
+| Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
+| Cardiomegaly        | 0.9248           | **0.932** | 0.89            | 0.922              |
+| Consolidation       | **0.7901**       | 0.783     | 0.789           | 0.746              |
+| Edema               | 0.8878           | **0.896** | 0.876           | 0.864              |
+| Effusion            | 0.8638           | **0.905** | 0.857           | 0.883              |
+| Emphysema           | 0.9371           | **0.963** | 0.828           | 0.85               |
+| Fibrosis            | 0.8047           | **0.814** | 0.772           | 0.766              |
+| Hernia              | 0.9164           | **0.997** | 0.872           | 0.925              |
+| Infiltration        | **0.7345**       | 0.708     | 0.7             | 0.673              |
+| Mass                | 0.8676           | **0.919** | 0.783           | 0.824              |
+| Nodule              | 0.7802           | **0.789** | 0.673           | 0.646              |
+| Pleural Thickening  | **0.8062**       | 0.801     | 0.766           | 0.756              |
+| Pneumonia           | **0.768**        | 0.74      | 0.713           | 0.656              |
+| Pneumothorax        | **0.8887**       | 0.875     | 0.821           | 0.827              |
 
-# References
+---
+### Average metrics across all diseases for each model
+| Metric  | DacNet | ViT Transformer | Replicate CheXNet |
+|---------|----------|------------------|--------------------|
+| Loss    | **0.0416** | 0.1589           | 0.1661             |
+| AUC     | **0.8527** | 0.7940           | 0.7928             |
+| F1      | **0.3861** | 0.1114           | 0.0763             |
+---
+### 📊 F1 Score Comparison for Each Model
+
+| Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
+|---------------------|----------|------------------|--------------------|
+| **AVERAGE**         | **0.386** | 0.111           | 0.076              |
+| Atelectasis         | **0.421** | 0.127           | 0.026              |
+| Cardiomegaly        | **0.532** | 0.264           | 0.423              |
+| Consolidation       | **0.226** | 0               | 0                  |
+| Edema               | **0.286** | 0.004           | 0                  |
+| Effusion            | **0.623** | 0.427           | 0.459              |
+| Emphysema           | **0.516** | 0.079           | 0                  |
+| Fibrosis            | **0.127** | 0               | 0                  |
+| Hernia              | **0.750** | 0               | 0                  |
+| Infiltration        | **0.395** | 0.193           | 0.061              |
+| Mass                | **0.477** | 0.213           | 0.079              |
+| Nodule              | **0.352** | 0.041           | 0                  |
+| Pleural Thickening  | **0.258** | 0               | 0                  |
+| Pneumonia           | **0.082** | 0               | 0                  |
+| Pneumothorax        | **0.360** | 0.211           | 0.021              |
+
+# Figures
+
+## Figure 1: Web app interface showing chest X-ray input, model predictions, and Grad-CAM visualization from our Hugging Face demo.
+![](figures/Figure1.png)
+
+## Figure 2: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation AUC score across all diseases is shown across the entire training run.
+![](figures/Figure2.png) 
+
+## Figure 3: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation F1 score across all diseases is shown across the entire training run.
+![](figures/Figure3.png)
+
+## Figure 4: Graphs from wandb.ai showing comparisons of the three final models: Dacnet.py (Formerly known as Dannynet.py), vit_transformer.py, and replicate_chexnet.py. The average validation loss across all diseases is shown across the entire training run.
+![](figures/Figure4.png)
+
+---
+# Acknowledgements
+We would like to thank Thomas Gardos, PhD for his mentorship and support.
+
