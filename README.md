@@ -10,13 +10,13 @@ pip install -r requirements.txt
 ---
 
 ## Try Our Model
-Test our final model on [Hugging Face Spaces: DannyNet Demo](https://huggingface.co/spaces/cfgpp/Danny_Net_Demo)
+Test our final model on [Hugging Face Spaces: DacNet Demo](https://huggingface.co/spaces/cfgpp/Dac_Net_Demo)
 ---
 
 ## Running the Code
 To train each model, navigate to the `scripts` directory and run the corresponding script. For example:
 ```sh
-python scripts/dannynet.py
+python scripts/DACnet.py
 ```
 
 Evaluation results such as AUC and F1 scores will be printed in the console and logged to Weights & Biases (WandB) if your account is configured. The best model checkpoint will be saved in a `models/<run_id>` folder.
@@ -35,7 +35,7 @@ We evaluate whether deep learning models, particularly CNNs and Transformers, ca
 Deep-Learning-Project/ 
   ├── eda.ipynb
   ├── scripts/ 
-    ├── dannynet.py 
+    ├── Dacnet.py 
     ├── replicate_chexnet.py
     ├── vit_transformer.py 
   ├── XRay_app/ 
@@ -98,11 +98,11 @@ Faithful reimplementation of the original CheXNet architecture using standard Py
 - Seed: 42
 
 **Purpose:**
-Serves as a baseline for evaluating improvements from custom architectures like `dannynet.py`.
+Serves as a baseline for evaluating improvements from custom architectures like `Dacnet.py`.
 
 ---
 
-### 2. `dannynet.py` – Final Custom CNN Model (Best Performer)
+### 2. `Dacnet.py` – Final Custom CNN Model (Best Performer)
 A DenseNet-121-based CNN enhanced with Focal Loss and advanced augmentations to handle the class imbalance in the dataset.
 
 **Key Features:**
@@ -162,7 +162,7 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 
 ---
 **Performance vs older models and publications on Test AUC scores per disease**
-| Pathology           | original CheXNet | dannynet.py | vit_transformer.py | replicate_chexnet.py |
+| Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
 |---------------------|------------------|----------|-------------------|--------------------|
 | Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
 | Cardiomegaly        | 0.9248           | **0.932** | 0.89            | 0.922              |
@@ -181,7 +181,7 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 
 ---
 ### Average metrics across all diseases for each model
-| Metric  | DannyNet | ViT Transformer | Replicate CheXNet |
+| Metric  | DacNet | ViT Transformer | Replicate CheXNet |
 |---------|----------|------------------|--------------------|
 | Loss    | **0.0416** | 0.1589           | 0.1661             |
 | AUC     | **0.8527** | 0.7940           | 0.7928             |
@@ -189,7 +189,7 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 ---
 ### 📊 F1 Score Comparison for Each Model
 
-| Disease             | DannyNet | ViT Transformer  | Replicate CheXNet |
+| Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
 |---------------------|----------|------------------|--------------------|
 | **AVERAGE**         | **0.386** | 0.111           | 0.076              |
 | Atelectasis         | **0.421** | 0.127           | 0.026              |
