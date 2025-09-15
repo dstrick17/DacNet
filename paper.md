@@ -95,6 +95,7 @@ for 9 out of 14 diseases.
 
 # Figures
 
+
 ---
 **Performance vs older models and publications on Test AUC scores per disease**
 | Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
@@ -144,7 +145,7 @@ for 9 out of 14 diseases.
 
 # Figures
 
-
+** Note: Dannynet.py is now known as Dacnet.py
 ![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
 
 ![Validation AUC across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure2.png)
