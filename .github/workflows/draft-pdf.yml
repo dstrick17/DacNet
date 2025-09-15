@@ -1,11 +1,8 @@
 name: Draft PDF
-
 on:
   push:
     paths:
-      - paper.md
-      - paper.bib
-      - figures/**
+      - paper/**
       - .github/workflows/draft-pdf.yml
 
 jobs:
@@ -15,15 +12,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Build draft PDF
         uses: openjournals/openjournals-draft-action@master
         with:
           journal: joss
-          paper-path: paper.md  # path to your paper.md
-
+          paper-path: paper.md
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: paper
-          path: paper.pdf       # output file produced by the action
+          path: paper.pdf
