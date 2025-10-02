@@ -33,7 +33,7 @@ We evaluate whether deep learning models, particularly CNNs and Transformers, ca
 ## Project Structure
 ```text
 Deep-Learning-Project/ 
-  ├── eda.ipynb
+  ├── project_EDA.ipynb
   ├── scripts/ 
     ├── Dacnet.py 
     ├── replicate_chexnet.py
