@@ -93,6 +93,7 @@ for 9 out of 14 diseases.
 
 # Tables
 
+: Table 1 - Performance vs older models and publications on Test AUC scores per disease
 | Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
 |:---|:---|:---|:---|:---|
 | Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
@@ -109,15 +110,15 @@ for 9 out of 14 diseases.
 | Pleural Thickening  | **0.8062**       | 0.801     | 0.766           | 0.756              |
 | Pneumonia           | **0.768**        | 0.74      | 0.713           | 0.656              |
 | Pneumothorax        | **0.8887**       | 0.875     | 0.821           | 0.827              |
-: Table 1 - Performance vs older models and publications on Test AUC scores per disease
 
+: Table 2 - Average metrics across all diseases for each model
 | Metric  | DacNet | ViT Transformer | Replicate CheXNet |
 |:---|:---|:---|:---|
 | Loss    | **0.0416** | 0.1589           | 0.1661             |
 | AUC     | **0.8527** | 0.7940           | 0.7928             |
 | F1      | **0.3861** | 0.1114           | 0.0763             |
-: Table 2 - Average metrics across all diseases for each model
 
+: Table 3 -F1 Score Comparison for Each Model
 | Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
 |:---|:---|:---|:---|
 | **AVERAGE**         | **0.386** | 0.111           | 0.076              |
@@ -135,11 +136,12 @@ for 9 out of 14 diseases.
 | Pleural Thickening  | **0.258** | 0               | 0                  |
 | Pneumonia           | **0.082** | 0               | 0                  |
 | Pneumothorax        | **0.360** | 0.211           | 0.021              |
-: Table 3 -F1 Score Comparison for Each Model
+
 
 # Figures
 
 ![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
+: Figure 1 - Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.
 
 # Acknowledgements
 We would like to thank Thomas Gardos, PhD for his mentorship and support.
