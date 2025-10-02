@@ -96,7 +96,7 @@ for 9 out of 14 diseases.
 # Figures
 
 
----
+***
 **Performance vs older models and publications on Test AUC scores per disease**
 | Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
 |---------------------|------------------|----------|-------------------|--------------------|
@@ -115,14 +115,14 @@ for 9 out of 14 diseases.
 | Pneumonia           | **0.768**        | 0.74      | 0.713           | 0.656              |
 | Pneumothorax        | **0.8887**       | 0.875     | 0.821           | 0.827              |
 
----
+***
 ### Average metrics across all diseases for each model
 | Metric  | DacNet | ViT Transformer | Replicate CheXNet |
 |---------|----------|------------------|--------------------|
 | Loss    | **0.0416** | 0.1589           | 0.1661             |
 | AUC     | **0.8527** | 0.7940           | 0.7928             |
 | F1      | **0.3861** | 0.1114           | 0.0763             |
----
+***
 ### F1 Score Comparison for Each Model
 
 | Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
@@ -145,7 +145,7 @@ for 9 out of 14 diseases.
 
 # Figures
 
-** Note: Dannynet.py is now known as Dacnet.py
+** Note: Dannynet.py is now known as Dacnet.pyb **
 ![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
 
 ![Validation AUC across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure2.png)
@@ -154,8 +154,7 @@ for 9 out of 14 diseases.
 
 ![Validation loss across training runs for DacNet (formerly DannyNet), ViT Transformer, and Replicated CheXNet.](figures/Figure4.png)
 
-
----
+***
 # Acknowledgements
 We would like to thank Thomas Gardos, PhD for his mentorship and support.
 
