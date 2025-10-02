@@ -51,16 +51,15 @@ models are trained to detect various thoracic diseases from radiographic scans. 
 study in this field, known as CheXNet, introduced a 121-layer DenseNet convolutional neural
 network that reportedly outperformed radiologists in detecting pneumonia [@rajpurkar2017chexnet]. Their work
 used the NIH ChestX-ray14 dataset, a publicly available dataset of over 100,000 frontal-view
-chest X-rays labeled with up to 14 disease classes [@nih2017chestxray]. The success of CheXNet has inspired
+chest X-rays labeled with up to 14 disease classes [@INPROCEEDINGS{8099852]. The success of CheXNet has inspired
 further research, as it represents a significant step toward using artificial intelligence to assist
 in clinical diagnosis, especially in regions where access to licensed radiologists is limited [@hwang2023tuberculosis].
 In the midst of a reproducibility crisis in academia, independent researchers must reproduce
-groundbreaking studies like this in order to help guide future research [@vannoorden2015reproducibility]. In this project, we
-set out to replicate the original CheXNet model as closely as possible, evaluate and improve
-performance metrics such as AUC-ROC and F1 scores across all 14 disease classes, and
+groundbreaking studies like this in order to help guide future research [@allison2016reproducibility]. In this project, we
+set out to replicate the original CheXNet model as closely as possible using the same NIH ChestX-ray14 dataset, evaluate and improve performance metrics such as AUC-ROC and F1 scores across all 14 disease classes, and
 explore whether newer deep learning techniques, particularly Vision Transformers (ViTs),
 could offer performance improvements over traditional convolutional neural networks. All
-code for our models and evaluation pipeline is publicly available in our [GitHub repository](https://github.com/dstrick17/DacNet) under an open-source MIT License. 
+code for our models and evaluation pipeline is publicly available in our [GitHub repository](https://github.com/dstrick17/DacNet) under an open-source MIT License.
 
 While our primary goal was to replicate the original CheXNet study, we also recognize the importance of its successor,
 CheXNeXt, which validated a similar model against board-certified radiologists on a curated
