@@ -21,7 +21,7 @@ authors:
     equal-contrib: true
     affiliation: 1
 
-    affiliations:
+affiliations:
   - name: "Department of Computing and Data Sciences, Boston University"
     index: 1
 
