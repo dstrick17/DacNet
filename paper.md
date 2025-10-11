@@ -97,55 +97,54 @@ for 9 out of 14 diseases.
 
 # Tables
 
-: Table 1 - Performance vs older models and publications on Test AUC scores per disease
-| Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
-|:---|:---|:---|:---|:---|
-| Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
-| Cardiomegaly        | 0.9248           | **0.932** | 0.89            | 0.922              |
-| Consolidation       | **0.7901**       | 0.783     | 0.789           | 0.746              |
-| Edema               | 0.8878           | **0.896** | 0.876           | 0.864              |
-| Effusion            | 0.8638           | **0.905** | 0.857           | 0.883              |
-| Emphysema           | 0.9371           | **0.963** | 0.828           | 0.85               |
-| Fibrosis            | 0.8047           | **0.814** | 0.772           | 0.766              |
-| Hernia              | 0.9164           | **0.997** | 0.872           | 0.925              |
-| Infiltration        | **0.7345**       | 0.708     | 0.7             | 0.673              |
-| Mass                | 0.8676           | **0.919** | 0.783           | 0.824              |
-| Nodule              | 0.7802           | **0.789** | 0.673           | 0.646              |
-| Pleural Thickening  | **0.8062**       | 0.801     | 0.766           | 0.756              |
-| Pneumonia           | **0.768**        | 0.74      | 0.713           | 0.656              |
-| Pneumothorax        | **0.8887**       | 0.875     | 0.821           | 0.827              |
+: Performance vs older models and publications on Test AUC scores per disease.\label{tab:auc_scores}
+| Pathology | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
+|:---|:---:|:---:|:---:|:---:|
+| Atelectasis | 0.8094 | **0.817** | 0.774 | 0.762 |
+| Cardiomegaly | 0.9248 | **0.932** | 0.89 | 0.922 |
+| Consolidation | **0.7901** | 0.783 | 0.789 | 0.746 |
+| Edema | 0.8878 | **0.896** | 0.876 | 0.864 |
+| Effusion | 0.8638 | **0.905** | 0.857 | 0.883 |
+| Emphysema | 0.9371 | **0.963** | 0.828 | 0.85 |
+| Fibrosis | 0.8047 | **0.814** | 0.772 | 0.766 |
+| Hernia | 0.9164 | **0.997** | 0.872 | 0.925 |
+| Infiltration | **0.7345** | 0.708 | 0.7 | 0.673 |
+| Mass | 0.8676 | **0.919** | 0.783 | 0.824 |
+| Nodule | 0.7802 | **0.789** | 0.673 | 0.646 |
+| Pleural Thickening | **0.8062** | 0.801 | 0.766 | 0.756 |
+| Pneumonia | **0.768** | 0.74 | 0.713 | 0.656 |
+| Pneumothorax | **0.8887** | 0.875 | 0.821 | 0.827 |
 
-: Table 2 - Average metrics across all diseases for each model
-| Metric  | DacNet | ViT Transformer | Replicate CheXNet |
-|:---|:---|:---|:---|
-| Loss    | **0.0416** | 0.1589           | 0.1661             |
-| AUC     | **0.8527** | 0.7940           | 0.7928             |
-| F1      | **0.3861** | 0.1114           | 0.0763             |
+: Average metrics across all diseases for each model.\label{tab:summary_metrics}
+| Metric | DacNet | ViT Transformer | Replicate CheXNet |
+|:---|:---:|:---:|:---:|
+| Loss | **0.0416** | 0.1589 | 0.1661 |
+| AUC | **0.8527** | 0.7940 | 0.7928 |
+| F1 | **0.3861** | 0.1114 | 0.0763 |
 
-: Table 3 -F1 Score Comparison for Each Model
-| Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
-|:---|:---|:---|:---|
-| **AVERAGE**         | **0.386** | 0.111           | 0.076              |
-| Atelectasis         | **0.421** | 0.127           | 0.026              |
-| Cardiomegaly        | **0.532** | 0.264           | 0.423              |
-| Consolidation       | **0.226** | 0               | 0                  |
-| Edema               | **0.286** | 0.004           | 0                  |
-| Effusion            | **0.623** | 0.427           | 0.459              |
-| Emphysema           | **0.516** | 0.079           | 0                  |
-| Fibrosis            | **0.127** | 0               | 0                  |
-| Hernia              | **0.750** | 0               | 0                  |
-| Infiltration        | **0.395** | 0.193           | 0.061              |
-| Mass                | **0.477** | 0.213           | 0.079              |
-| Nodule              | **0.352** | 0.041           | 0                  |
-| Pleural Thickening  | **0.258** | 0               | 0                  |
-| Pneumonia           | **0.082** | 0               | 0                  |
-| Pneumothorax        | **0.360** | 0.211           | 0.021              |
+: F1 Score Comparison for Each Model (Per-disease).\label{tab:f1_scores}
+| Disease | DacNet | ViT Transformer | Replicate CheXNet |
+|:---|:---:|:---:|:---:|
+| **AVERAGE** | **0.386** | 0.111 | 0.076 |
+| Atelectasis | **0.421** | 0.127 | 0.026 |
+| Cardiomegaly | **0.532** | 0.264 | 0.423 |
+| Consolidation | **0.226** | 0 | 0 |
+| Edema | **0.286** | 0.004 | 0 |
+| Effusion | **0.623** | 0.427 | 0.459 |
+| Emphysema | **0.516** | 0.079 | 0 |
+| Fibrosis | **0.127** | 0 | 0 |
+| Hernia | **0.750** | 0 | 0 |
+| Infiltration | **0.395** | 0.193 | 0.061 |
+| Mass | **0.477** | 0.213 | 0.079 |
+| Nodule | **0.352** | 0.041 | 0 |
+| Pleural Thickening | **0.258** | 0 | 0 |
+| Pneumonia | **0.082** | 0 | 0 |
+| Pneumothorax | **0.360** | 0.211 | 0.021 |
 
 
 # Figures
 
 ![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
-: Figure 1 - Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.
 
 # Acknowledgements
 We would like to thank Thomas Gardos, PhD for his mentorship and support.
