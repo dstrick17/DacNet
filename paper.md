@@ -147,8 +147,9 @@ Table: F1 Score Comparison for Each Model (Per-disease).\label{tab:f1_scores}
 
 # Figures
 
-![Web app interface showing chest X-ray input, predictions, and Grad-CAM from our Hugging Face demo.](figures/Figure1.png)
+![(Left) An example of an X-Ray from the NIH ChestX-ray14 with Hernia and Infiltration as its ground truth findings. (Center) Grad-CAM visualizations of the same X-Ray image. (Right) DACNet’s predictions of the 5 most likely findings in the image.](figures/Figure1.png)
 
 # Acknowledgements
 We would like to thank Thomas Gardos, PhD for his mentorship and support.
 
+# References
