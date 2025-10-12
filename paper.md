@@ -97,7 +97,7 @@ for 9 out of 14 diseases.
 
 # Tables
 
-: Performance vs older models and publications on Test AUC scores per disease.\label{tab:auc_scores}
+Table: Performance vs older models and publications on Test AUC scores per disease.\label{tab:auc_scores}
 | Pathology | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
 |:---|:---:|:---:|:---:|:---:|
 | Atelectasis | 0.8094 | **0.817** | 0.774 | 0.762 |
@@ -115,14 +115,14 @@ for 9 out of 14 diseases.
 | Pneumonia | **0.768** | 0.74 | 0.713 | 0.656 |
 | Pneumothorax | **0.8887** | 0.875 | 0.821 | 0.827 |
 
-: Average metrics across all diseases for each model.\label{tab:summary_metrics}
+Table: Average metrics across all diseases for each model.\label{tab:summary_metrics}
 | Metric | DacNet | ViT Transformer | Replicate CheXNet |
 |:---|:---:|:---:|:---:|
 | Loss | **0.0416** | 0.1589 | 0.1661 |
 | AUC | **0.8527** | 0.7940 | 0.7928 |
 | F1 | **0.3861** | 0.1114 | 0.0763 |
 
-: F1 Score Comparison for Each Model (Per-disease).\label{tab:f1_scores}
+Table: F1 Score Comparison for Each Model (Per-disease).\label{tab:f1_scores}
 | Disease | DacNet | ViT Transformer | Replicate CheXNet |
 |:---|:---:|:---:|:---:|
 | **AVERAGE** | **0.386** | 0.111 | 0.076 |
