@@ -10,7 +10,7 @@ pip install -r requirements.txt
 ---
 
 ## Try Our Model
-Test our final model on [Hugging Face Spaces: DacNet Demo](https://huggingface.co/spaces/cfgpp/Dac_Net_Demo)
+Test our final model on [Hugging Face Spaces: DacNet Demo](https://huggingface.co/spaces/cfgpp/DACNet)
 ---
 
 ## Running the Code
@@ -27,30 +27,6 @@ Evaluation results such as AUC and F1 scores will be printed in the console and 
 This project replicates and extends the findings from the paper: [**CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning**](https://arxiv.org/abs/1711.05225).
 
 We evaluate whether deep learning models, particularly CNNs and Transformers, can classify 14 chest pathologies from the NIH Chest X-ray dataset and potentially match or surpass expert radiologist performance.
-
----
-
-## Project Structure
-```text
-Deep-Learning-Project/ 
-  ├── project_EDA.ipynb
-  ├── scripts/ 
-    ├── Dacnet.py 
-    ├── replicate_chexnet.py
-    ├── vit_transformer.py 
-  ├── XRay_app/ 
-    ├── app.py
-    ├── utils/
-      ├── model_utils.py
-      ├── preprocessing.py
-  ├── test-images/
-    ├── cardiomegaly.png
-    ├── hernia-infiltration.png 
-    ├── mass-nodule.png 
-  ├── .gitignore 
-  ├── requirements.txt 
-  ├── README.md
-```
 
 ---
 
