@@ -1,143 +1,177 @@
-# Chest X-Ray Classification Using Deep Learning
+# DACNet: Reproduction and Extension of CheXNet for Chest X-ray Classification
 
-## Clone & Set Up
-```sh
-git clone https://github.com/your-username/Deep-Learning-Project.git
-cd Deep-Learning-Project
-pip install -r requirements.txt
+This repository contains:
+1. a **reproduction** of the CheXNet DenseNet-121 model on the NIH ChestX-ray14 dataset, and  
+2. an **extension (DACNet)** designed to improve performance under class imbalance.
+
+It also includes a Vision Transformer baseline and a Streamlit demo for inference.
+
+---
+
+## Reproduction Scope
+
+This work reproduces key components of:
+
+**CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning**  
+Rajpurkar et al., 2017 (arXiv:1711.05225)
+
+### What is reproduced
+- DenseNet-121 architecture
+- Multi-label classification (14 thoracic diseases)
+- Patient-level dataset splitting
+- Evaluation using AUC-ROC and F1 score
+
+### Known differences from the original work
+- No access to the original **expert-labeled test set**
+- Labels are based on the publicly available NIH dataset
+- Some implementation details are inferred due to lack of official code
+
+---
+
+## Repository Structure
 ```
-
----
-
-## Try Our Model
-Test our final model on [Hugging Face Spaces: DacNet Demo](https://huggingface.co/spaces/cfgpp/DACNet)
----
-
-## Running the Code
-To train each model, navigate to the `scripts` directory and run the corresponding script. For example:
-```sh
-python scripts/DACnet.py
+DacNet/
+├── scripts/
+│   ├── replicate_chexnet.py
+│   ├── Dacnet.py
+│   ├── vit_transformer.py
+├── XRay_app/
+├── reproducibility/
+│   └── test_run.sh
+├── project_EDA.ipynb
+├── requirements.txt
 ```
-
-Evaluation results such as AUC and F1 scores will be printed in the console and logged to Weights & Biases (WandB) if your account is configured. The best model checkpoint will be saved in a `models/<run_id>` folder.
-
----
-
-## Project Overview
-This project replicates and extends the findings from the paper: [**CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning**](https://arxiv.org/abs/1711.05225).
-
-We evaluate whether deep learning models, particularly CNNs and Transformers, can classify 14 chest pathologies from the NIH Chest X-ray dataset and potentially match or surpass expert radiologist performance.
-
 ---
 
 ## Dataset
-- **Source:** [NIH Chest X-ray Dataset (Kaggle)](https://www.kaggle.com/datasets/nih-chest-xrays/data)
-- **Official Release:** [NIH Press Release](https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community)
-- **Size:** 112,120 X-ray images from 30,805 unique patients
-- **Labels:** Multi-label classification of 14 thoracic diseases
 
-### Preprocessing
-- Resizing to 224×224
-- Normalization using ImageNet mean/std
-- Data augmentation (e.g., rotation, brightness, contrast)
-- Libraries used: `torchvision.transforms`
-- Dataset filtering: Only includes images present in local folders and valid view positions (PA, AP)
+This project uses the **NIH ChestX-ray14 dataset**.
+
+- ~112,000 frontal chest X-rays  
+- 30,805 patients  
+- 14 disease labels  
+
+Download from:
+https://www.kaggle.com/datasets/nih-chest-xrays/data
 
 ---
+
+## Dataset Setup
+
+Your directory must match what the scripts expect.
+
+Example structure:
+
+```
+data/
+├── Data_Entry_2017.csv
+├── images_001/
+├── images_002/
+...
+├── images_012/
+```
+
+If your dataset is stored elsewhere, update the path in the scripts:
+
+```python
+CONFIG["data_dir"] = "/path/to/your/data"
+```
+
+---
+
+## Reproducible Environment (Docker)
+
+We provide a Docker environment to improve reproducibility.
+
+### Build the container
+
+```bash
+docker build -t dacnet-env .
+```
+
+### Run the container
+
+```bash
+docker run --gpus all -it --rm -v $(pwd):/workspace/DacNet dacnet-env
+```
+
+Notes:
+- Requires CUDA-compatible GPU  
+- ≥8GB VRAM recommended  
+- If no GPU, remove `--gpus all`  
+
+---
+
+## Quick Verification
+
+Before running full training, verify the setup:
+
+```bash
+bash reproducibility/test_run.sh
+```
+
+This checks:
+- dataset loading  
+- model initialization  
+- training loop execution  
+If this step fails, verify dataset paths and file structure before proceeding to full training.
+---
+## Running the Models
+
+Once inside the Docker container, you can execute the training scripts.
+ 
+### 1. Reproduction Baseline (CheXNet)
+
+```bash
+python scripts/replicate_chexnet.py
+```
+
+### 2. DACNet (Improved CNN)
+
+```bash
+python scripts/Dacnet.py
+```
+
+### 3. Vision Transformer
+
+```bash
+python scripts/vit_transformer.py
+```
+
+If you encounter CUDA memory errors, reduce batch size in the scripts.
+
+---
+ 
+Evaluation results (AUC and F1) will print to the console. If WANDB is configured, it will log automatically; otherwise, the container defaults to offline mode. The best model checkpoint will be saved in a `models/<run_id>` folder.
+
+---
+
 
 ## Models
-We present three models that were trained as separate python scripts located in the scripts folder
 
-### 1. `replicate_chexnet.py` – Baseline Reimplementation of CheXNet
-Faithful reimplementation of the original CheXNet architecture using standard PyTorch tools.
+### replicate_chexnet.py (Baseline)
+DenseNet-121 reproduction of CheXNet.
+- Multi-label classification (14 diseases)  
+- BCEWithLogitsLoss  
+- Patient-level split  
+- Evaluated using AUC and F1  
 
-**Key Features:**
-- **Architecture:** DenseNet-121 (pretrained)
-- **Classifier:** Fully connected output for 14 diseases
-- **Loss:** BCEWithLogitsLoss (standard binary cross-entropy)
-- **Optimizer:** Adam with `weight_decay=1e-5`
-- **Scheduler:** ReduceLROnPlateau (patience=1)
-- **Augmentations:**
-  - `Resize(224)`
-  - `RandomHorizontalFlip`
-- **Evaluation:** AUC-ROC and F1 (threshold=0.5)
-- **Filtering:** Uses only PA/AP views as per the original paper
+### Dacnet.py (DACNet)
+Improved CNN designed for class imbalance.
+- DenseNet-121 backbone  
+- Focal Loss  
+- Per-class threshold tuning  
+- Improved F1 performance  
 
-**Training Strategy:**
-- Patient-level splitting
-- Early stopping (patience=5)
-- Epochs: 20 max
-
-**Hyperparameters:**
-- Batch size: 16
-- Learning rate: 0.001
-- Seed: 42
-
-**Purpose:**
-Serves as a baseline for evaluating improvements from custom architectures like `Dacnet.py`.
+### vit_transformer.py (ViT)
+Transformer-based baseline.
+- ViT-Base architecture  
+- Multi-label classification  
+- Compared against CNN approaches  
 
 ---
 
-### 2. `Dacnet.py` – Final Custom CNN Model (Best Performer)
-A DenseNet-121-based CNN enhanced with Focal Loss and advanced augmentations to handle the class imbalance in the dataset.
-
-**Key Features:**
-- **Architecture:** DenseNet-121 (pretrained)
-- **Classifier:** Fully connected layer outputting 14 logits
-- **Loss:** Focal Loss (alpha=1, gamma=2)
-- **Optimizer:** AdamW with `weight_decay=1e-5`
-- **Scheduler:** ReduceLROnPlateau (patience=1, factor=0.1)
-- **Augmentations:**
-  - `RandomResizedCrop(224)`
-  - `RandomHorizontalFlip`
-  - `ColorJitter`
-- **Evaluation:** AUC-ROC, F1 scores, optimal F1 thresholds per class
-
-**Training Strategy:**
-- Patient-level split to avoid data leakage
-- Early stopping (patience=5)
-- Epochs: 25 max
-
-**Hyperparameters:**
-- Batch size: 8
-- Image size: 224x224
-- Learning rate: 0.00005
-- Seed: 42
-
-**Performance:**
-Highest average AUC and F1 across all models; used in final deployment/demo.
-
----
-
-### 3. `vit_transformer.py` – Vision Transformer for Chest X-Ray Classification
-Explores transformers for medical image classification using Hugging Face's `ViT-Base Patch16 224` model.
-
-**Key Features:**
-- **Architecture:** Vision Transformer (ViT) pretrained on ImageNet
-- **Loss:** BCEWithLogitsLoss
-- **Optimizer:** Adam (`lr=0.0001`, `weight_decay=1e-5`)
-- **Scheduler:** ReduceLROnPlateau (patience=3)
-- **Preprocessing:**
-  - Uses `ViTFeatureExtractor`
-  - Resize + normalize to transformer expectations
-
-**Evaluation:**
-- AUC-ROC and F1 (per class and average)
-- Threshold = 0.5
-
-**Training Strategy:**
-- Patient-level split (80/10/10)
-- 20 epochs max
-- Early stopping (patience=5)
-
-**Batch Size:** 16  
-**Image Size:** 224x224
-
-**Why Transformers?**
-ViTs treat images as sequences of patches and apply self-attention to model global image features, which can be advantageous for complex medical images.
-
----
-**Performance vs older models and publications on Test AUC scores per disease**
+**Performance (Test AUC per Disease)**
 | Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
 |---------------------|------------------|----------|-------------------|--------------------|
 | Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
@@ -163,7 +197,7 @@ ViTs treat images as sequences of patches and apply self-attention to model glob
 | AUC     | **0.8527** | 0.7940           | 0.7928             |
 | F1      | **0.3861** | 0.1114           | 0.0763             |
 ---
-### 📊 F1 Score Comparison for Each Model
+### F1 Score Comparison for Each Model
 
 | Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
 |---------------------|----------|------------------|--------------------|
@@ -201,6 +235,43 @@ Jupyter Notebook that conducts Exploratory Data Analysis such as how many differ
 - **Evaluation:** Per-class AUC-ROC and F1 metrics
 - **Comparison:** Benchmarks against original CheXNet results
 
+---
+
+## Demo
+
+Try the model here:  
+https://huggingface.co/spaces/cfgpp/DACNet
+
+Features:
+- image upload  
+- multi-label prediction  
+- Grad-CAM visualization  
+
+---
+
+## Limitations
+
+- Results rely on NIH labels (not expert annotations)  
+- Some implementation details are inferred  
+- Performance may vary across environments  
+- Dataset path must be manually configured  
+
+---
+
+## Citation
+
+If you use this repository:
+
+An Open-Source Reproduction and Enhancement of CheXNet for Chest X-ray Disease Classification  
+https://arxiv.org/abs/2505.06646
+
+---
+
+## Acknowledgments
+
+Rajpurkar et al.  
+CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning  
+https://arxiv.org/abs/1711.05225
 
 
 
