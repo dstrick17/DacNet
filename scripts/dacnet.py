@@ -1,4 +1,5 @@
 import os
+import argparse
 import pandas as pd
 from PIL import Image
 import torch
@@ -21,12 +22,25 @@ CONFIG = {
     "epochs": 25,
     "num_workers": 2,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
-    "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
+    "data_dir": None,
     "wandb_project": "X-Ray Classification",
     "patience": 5,
     "seed": 42,
     "image_size": 224,
 }
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train DACNet on NIH ChestX-ray14")
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        required=True,
+        help="Path to the NIH ChestX-ray14 data directory containing Data_Entry_2017.csv and images_001 ... images_012"
+    )
+    return parser.parse_args()
+
+args = parse_args()
+CONFIG["data_dir"] = args.data_dir
 
 # Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
@@ -73,8 +87,18 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], we
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
 
 # Load the CSV file with image metadata
-data_path = CONFIG["data_dir"]
+data_path = os.path.abspath(CONFIG["data_dir"])
+
+if not os.path.exists(data_path):
+    raise FileNotFoundError(f"Data directory not found: {data_path}")
+
 csv_file = os.path.join(data_path, "Data_Entry_2017.csv")
+
+if not os.path.exists(csv_file):
+    raise FileNotFoundError(f"Metadata file not found: {csv_file}")
+
+print(f"Using dataset directory: {data_path}")
+
 df = pd.read_csv(csv_file)
 
 # Get list of all image folders from images_001 to images_012
