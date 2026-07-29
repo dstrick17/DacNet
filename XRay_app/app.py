@@ -2,8 +2,8 @@
 import streamlit as st
 from PIL import Image
 import torch
-from model_utils import load_model, predict,  generate_gradcam
-from preprocessing import preprocess_image
+from utils.model_utils import DISEASE_LIST, load_model, predict, generate_gradcam
+from utils.preprocessing import preprocess_image
 import numpy as np
 import cv2
 
@@ -14,7 +14,12 @@ st.set_page_config(page_title="X-ray Diagnosis Demo", layout="centered")
 st.title("🩻 X-ray Multi-Label Diagnosis App (CheXNet)")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = load_model(device)
+
+@st.cache_resource
+def get_model(device_name):
+    return load_model(torch.device(device_name))
+
+model = get_model(str(device))
 
 
 uploaded_file = st.file_uploader("Upload a chest X-ray", type=["jpg", "jpeg", "png"])
@@ -29,7 +34,7 @@ if uploaded_file:
 
     # Get top class
     top_disease = max(probs, key=probs.get)
-    target_idx = list(probs.keys()).index(top_disease)
+    target_idx = DISEASE_LIST.index(top_disease)
 
 # Grad-CAM
     cam = generate_gradcam(model, img_tensor, target_idx, device)

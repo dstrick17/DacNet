@@ -1,0 +1,26 @@
+name: Repro Smoke Test
+on:
+  push:
+    paths:
+      - '**/*.py'
+      - 'requirements.txt'
+      - 'XRay_app/**'
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run smoke script
+        run: |
+          bash reproduce.sh

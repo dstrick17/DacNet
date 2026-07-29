@@ -1,5 +1,7 @@
 import os
 import argparse
+import json
+import random
 import pandas as pd
 from PIL import Image
 import torch
@@ -24,23 +26,74 @@ CONFIG = {
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": None,
     "wandb_project": "X-Ray Classification",
+    "wandb_mode": "offline",
     "patience": 5,
     "seed": 42,
     "image_size": 224,
+    "output_dir": "models",
+    "max_train_batches": None,
+    "max_eval_batches": None,
 }
+
+def discover_data_dir():
+    candidates = [
+        os.environ.get("NIH_DATA_DIR"),
+        "/kaggle/input/data",
+        "/kaggle/input/nih-chest-xrays/data",
+        "/kaggle/input/nih-chest-xrays",
+    ]
+    for candidate in candidates:
+        if candidate and os.path.exists(os.path.join(candidate, "Data_Entry_2017.csv")):
+            return candidate
+    kaggle_input = "/kaggle/input"
+    if os.path.isdir(kaggle_input):
+        for root, dirs, files in os.walk(kaggle_input):
+            if "Data_Entry_2017.csv" in files and any(d.startswith("images_") for d in dirs):
+                return root
+    return None
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train DACNet on NIH ChestX-ray14")
     parser.add_argument(
         "--data_dir",
         type=str,
-        required=True,
+        default=discover_data_dir(),
         help="Path to the NIH ChestX-ray14 data directory containing Data_Entry_2017.csv and images_001 ... images_012"
+    )
+    parser.add_argument("--epochs", type=int, default=CONFIG["epochs"], help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=CONFIG["batch_size"], help="Batch size")
+    parser.add_argument("--num_workers", type=int, default=CONFIG["num_workers"], help="DataLoader workers")
+    parser.add_argument("--output_dir", default=CONFIG["output_dir"], help="Directory for checkpoints and results")
+    parser.add_argument("--max_train_batches", type=int, default=CONFIG["max_train_batches"], help="Optional cap on training batches for smoke tests")
+    parser.add_argument("--max_eval_batches", type=int, default=CONFIG["max_eval_batches"], help="Optional cap on validation/test batches for smoke tests")
+    parser.add_argument(
+        "--wandb_mode",
+        default=CONFIG["wandb_mode"],
+        choices=["online", "offline", "disabled"],
+        help="Weights & Biases logging mode",
     )
     return parser.parse_args()
 
 args = parse_args()
-CONFIG["data_dir"] = args.data_dir
+if not args.data_dir:
+    raise ValueError("Provide --data_dir or set NIH_DATA_DIR to the NIH ChestX-ray14 directory.")
+
+CONFIG.update({
+    "data_dir": args.data_dir,
+    "epochs": args.epochs,
+    "batch_size": args.batch_size,
+    "num_workers": args.num_workers,
+    "output_dir": args.output_dir,
+    "wandb_mode": args.wandb_mode,
+    "max_train_batches": args.max_train_batches,
+    "max_eval_batches": args.max_eval_batches,
+})
+
+random.seed(CONFIG["seed"])
+np.random.seed(CONFIG["seed"])
+torch.manual_seed(CONFIG["seed"])
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(CONFIG["seed"])
 
 # Define image transformations (consistent with CheXNet)
 transform_train = transforms.Compose([
@@ -113,6 +166,8 @@ for folder in image_folders:
 
 # Filter the CSV to include only images that are present in the folders
 df = df[df['Image Index'].isin(image_to_folder.keys())]
+if df.empty:
+    raise ValueError("No matching PNG images found. Expected images_001 ... images_012/images folders.")
 
 # Unique patient IDs
 unique_patients = df['Patient ID'].unique()
@@ -194,32 +249,44 @@ def get_optimal_thresholds(labels, preds):
         thresholds.append(best_threshold)
     return thresholds
 
-def evaluate(model, loader, criterion, device, desc="[Test]"):
+def evaluate(model, loader, criterion, device, desc="[Test]", thresholds=None):
     model.eval()
     running_loss = 0.0
+    num_batches = 0
     all_labels, all_preds = [], []
     with torch.no_grad():
-        for inputs, labels in tqdm(loader, desc=desc):
+        for batch_idx, (inputs, labels) in enumerate(tqdm(loader, desc=desc)):
+            if CONFIG["max_eval_batches"] is not None and batch_idx >= CONFIG["max_eval_batches"]:
+                break
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
+            num_batches += 1
             preds = torch.sigmoid(outputs)
             all_labels.append(labels.cpu())
             all_preds.append(preds.cpu())
 
+    if not all_labels:
+        raise ValueError("No evaluation batches were processed.")
+
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
-    thresholds = get_optimal_thresholds(all_labels, all_preds)
+    if thresholds is None:
+        thresholds = get_optimal_thresholds(all_labels, all_preds)
 
     preds_binary = np.zeros_like(all_preds)
     for i in range(all_preds.shape[1]):
         preds_binary[:, i] = (all_preds[:, i] > thresholds[i]).astype(int)
 
-    auc_scores = [roc_auc_score(all_labels[:, i], all_preds[:, i]) for i in range(14)]
+    auc_scores = [
+        roc_auc_score(all_labels[:, i], all_preds[:, i])
+        if len(np.unique(all_labels[:, i])) > 1 else float("nan")
+        for i in range(14)
+    ]
     f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
 
-    avg_auc = np.mean(auc_scores)
+    avg_auc = np.nanmean(auc_scores)
     avg_f1 = np.mean(f1_scores)
 
     for i, disease in enumerate(disease_list):
@@ -228,7 +295,7 @@ def evaluate(model, loader, criterion, device, desc="[Test]"):
     print(f"{desc} Avg AUC: {avg_auc:.4f}, Avg F1: {avg_f1:.4f}")
 
     return {
-        "loss": running_loss / len(loader),
+        "loss": running_loss / num_batches,
         "avg_auc": avg_auc,
         "avg_f1": avg_f1,
         "auc_dict": dict(zip(disease_list, auc_scores)),
@@ -242,8 +309,11 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     device = CONFIG["device"]
     model.train()
     running_loss = 0.0
+    num_batches = 0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
     for i, (inputs, labels) in enumerate(progress_bar):
+        if CONFIG["max_train_batches"] is not None and i >= CONFIG["max_train_batches"]:
+            break
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -251,15 +321,18 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        progress_bar.set_postfix({"loss": running_loss / (i + 1)})
-    train_loss = running_loss / len(trainloader)
+        num_batches += 1
+        progress_bar.set_postfix({"loss": running_loss / num_batches})
+    if num_batches == 0:
+        raise ValueError("No training batches were processed.")
+    train_loss = running_loss / num_batches
     return train_loss
 
 def validate(model, valloader, criterion, device):
     return evaluate(model, valloader, criterion, device, desc="[Validate]")
 
  # Training loop with WandB and timestamped checkpoints
-wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
+wandb.init(project=CONFIG["wandb_project"], config=CONFIG, mode=CONFIG["wandb_mode"])
 wandb.watch(model, log="all")
 
 transform_names = [t.__class__.__name__ for t in transform_train.transforms]
@@ -275,11 +348,12 @@ wandb.config.update({
 
 
 run_id = wandb.run.id
-checkpoint_dir = os.path.join("models", run_id)
+checkpoint_dir = os.path.join(CONFIG["output_dir"], run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 best_val_auc = 0.0
 patience_counter = 0
+best_thresholds = None
 
 
 for epoch in range(CONFIG["epochs"]):
@@ -298,8 +372,9 @@ for epoch in range(CONFIG["epochs"]):
         "optimal_thresholds": val_stats["thresholds"],
 })
 
-    if val_stats["avg_auc"] > best_val_auc:
+    if best_thresholds is None or val_stats["avg_auc"] > best_val_auc:
         best_val_auc = val_stats["avg_auc"]
+        best_thresholds = [val_stats["thresholds"][disease] for disease in disease_list]
 
         patience_counter = 0
         timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -315,7 +390,21 @@ for epoch in range(CONFIG["epochs"]):
 # Evaluate the best model
 best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
 model.load_state_dict(torch.load(best_checkpoint_path))
-test_stats = evaluate(model, testloader, criterion, CONFIG["device"])
+test_stats = evaluate(model, testloader, criterion, CONFIG["device"], thresholds=best_thresholds)
+results = {
+    "model": CONFIG["model"],
+    "test_loss": test_stats["loss"],
+    "test_auc": test_stats["avg_auc"],
+    "test_f1": test_stats["avg_f1"],
+    "test_auc_dict": test_stats["auc_dict"],
+    "test_f1_dict": test_stats["f1_dict"],
+    "thresholds": test_stats["thresholds"],
+    "checkpoint": best_checkpoint_path,
+    "config": CONFIG,
+}
+with open(os.path.join(checkpoint_dir, "test_results.json"), "w", encoding="utf-8") as f:
+    json.dump(results, f, indent=2, default=float)
+
 wandb.log({
     "test_loss": test_stats["loss"],
     "test_auc": test_stats["avg_auc"],

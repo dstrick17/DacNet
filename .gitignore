@@ -6,6 +6,7 @@
 /.venv/
 
 # Ignore model outputs and logs
+/models/
 /models/old_models/
 /**/wandb/
 /**/__pycache__/

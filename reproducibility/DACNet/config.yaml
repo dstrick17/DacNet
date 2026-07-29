@@ -36,7 +36,7 @@ batch_size:
 classifier_head:
     value: Linear(in_features=1024, out_features=14, bias=True)
 data_dir:
-    value: /projectnb/dl4ds/projects/dca_project/nih_data
+    value: <NIH_DATA_DIR>
 device:
     value: cuda
 epochs:

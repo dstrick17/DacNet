@@ -1,4 +1,7 @@
 import os
+import argparse
+import json
+import random
 import pandas as pd
 from PIL import Image
 import torch
@@ -22,12 +25,69 @@ CONFIG = {
     "epochs": 20,
     "num_workers": 1,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
-    "data_dir": "/projectnb/dl4ds/projects/dca_project/nih_data",
+    "data_dir": None,
     "wandb_project": "X-Ray Classification",
+    "wandb_mode": "offline",
     "patience": 5,
     "seed": 42,
     "image_size": 224,
+    "output_dir": "models",
 }
+
+def discover_data_dir():
+    candidates = [
+        os.environ.get("NIH_DATA_DIR"),
+        "/kaggle/input/data",
+        "/kaggle/input/nih-chest-xrays/data",
+        "/kaggle/input/nih-chest-xrays",
+    ]
+    for candidate in candidates:
+        if candidate and os.path.exists(os.path.join(candidate, "Data_Entry_2017.csv")):
+            return candidate
+    kaggle_input = "/kaggle/input"
+    if os.path.isdir(kaggle_input):
+        for root, dirs, files in os.walk(kaggle_input):
+            if "Data_Entry_2017.csv" in files and any(d.startswith("images_") for d in dirs):
+                return root
+    return None
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train the ViT baseline on NIH ChestX-ray14")
+    parser.add_argument(
+        "--data_dir",
+        default=discover_data_dir(),
+        help="Path to NIH ChestX-ray14 containing Data_Entry_2017.csv and images_001 ... images_012/images",
+    )
+    parser.add_argument("--epochs", type=int, default=CONFIG["epochs"], help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=CONFIG["batch_size"], help="Batch size")
+    parser.add_argument("--num_workers", type=int, default=CONFIG["num_workers"], help="DataLoader workers")
+    parser.add_argument("--output_dir", default=CONFIG["output_dir"], help="Directory for checkpoints and results")
+    parser.add_argument(
+        "--wandb_mode",
+        default=CONFIG["wandb_mode"],
+        choices=["online", "offline", "disabled"],
+        help="Weights & Biases logging mode",
+    )
+    return parser.parse_args()
+
+args = parse_args()
+if not args.data_dir:
+    raise ValueError("Provide --data_dir or set NIH_DATA_DIR to the NIH ChestX-ray14 directory.")
+
+CONFIG.update({
+    "data_dir": args.data_dir,
+    "epochs": args.epochs,
+    "batch_size": args.batch_size,
+    "num_workers": args.num_workers,
+    "output_dir": args.output_dir,
+    "wandb_mode": args.wandb_mode,
+})
+
+random.seed(CONFIG["seed"])
+np.random.seed(CONFIG["seed"])
+torch.manual_seed(CONFIG["seed"])
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(CONFIG["seed"])
 
 # Define the model name and load feature extractor
 model_name = "google/vit-base-patch16-224"
@@ -41,10 +101,13 @@ def transform_test(img):
     return feature_extractor(images=img, return_tensors='pt')['pixel_values'][0]
 
 # Load the CSV file with image metadata
-data_path = CONFIG["data_dir"]
+data_path = os.path.abspath(CONFIG["data_dir"])
+if not os.path.isdir(data_path):
+    raise FileNotFoundError(f"Data directory not found: {data_path}")
 csv_file = os.path.join(data_path, "Data_Entry_2017.csv")
 if not os.path.exists(csv_file):
     raise FileNotFoundError(f"CSV file not found at {csv_file}")
+print(f"Using dataset directory: {data_path}")
 df = pd.read_csv(csv_file)
 
 # Get list of all image folders from images_001 to images_012
@@ -155,8 +218,12 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     all_preds = torch.cat(all_preds).numpy()
     test_loss = running_loss / len(testloader)
 
-    auc_scores = [roc_auc_score(all_labels[:, i], all_preds[:, i]) for i in range(14)]
-    avg_auc = np.mean(auc_scores)
+    auc_scores = [
+        roc_auc_score(all_labels[:, i], all_preds[:, i])
+        if len(np.unique(all_labels[:, i])) > 1 else float("nan")
+        for i in range(14)
+    ]
+    avg_auc = np.nanmean(auc_scores)
     for i, disease in enumerate(disease_list):
         print(f"{desc} {disease} AUC-ROC: {auc_scores[i]:.4f}")
     auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
@@ -198,14 +265,14 @@ def validate(model, valloader, criterion, device):
 
 # Training loop with WandB and timestamped checkpoints
 try:
-    wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
+    wandb.init(project=CONFIG["wandb_project"], config=CONFIG, mode=CONFIG["wandb_mode"])
     wandb.watch(model)
 except Exception as e:
     print(f"WandB initialization failed: {e}. Continuing without WandB.")
     wandb.init(mode="disabled")
 
 run_id = wandb.run.id
-checkpoint_dir = os.path.join("models", run_id)
+checkpoint_dir = os.path.join(CONFIG["output_dir"], run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 best_val_auc = 0.0
@@ -246,6 +313,19 @@ if not checkpoint_files:
 best_checkpoint_path = sorted(checkpoint_files)[-1]
 model.load_state_dict(torch.load(best_checkpoint_path))
 test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
+results = {
+    "model": CONFIG["model"],
+    "test_loss": test_loss,
+    "test_auc": test_auc,
+    "test_f1": test_f1,
+    "test_auc_dict": auc_dict,
+    "test_f1_dict": f1_dict,
+    "checkpoint": best_checkpoint_path,
+    "config": CONFIG,
+}
+with open(os.path.join(checkpoint_dir, "test_results.json"), "w", encoding="utf-8") as f:
+    json.dump(results, f, indent=2, default=float)
+
 wandb.log({
     "test_loss": test_loss,
     "test_auc": test_auc,

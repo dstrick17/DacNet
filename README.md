@@ -33,11 +33,13 @@ Rajpurkar et al., 2017 (arXiv:1711.05225)
 DacNet/
 ├── scripts/
 │   ├── replicate_chexnet.py
-│   ├── Dacnet.py
+│   ├── dacnet.py
 │   ├── vit_transformer.py
 ├── XRay_app/
 ├── reproducibility/
-│   └── test_run.sh
+│   ├── DACNet/
+│   ├── replicate_chexnet/
+│   └── vit_transformer/
 ├── project_EDA.ipynb
 ├── requirements.txt
 ```
@@ -53,6 +55,8 @@ This project uses the **NIH ChestX-ray14 dataset**.
 
 Download from:
 https://www.kaggle.com/datasets/nih-chest-xrays/data
+
+For cloud/Kaggle workflows that avoid downloading all images to a personal computer, see [DATA_ACCESS.md](DATA_ACCESS.md).
 
 ---
 
@@ -73,9 +77,11 @@ data/
 
 If your dataset is stored elsewhere, update the path in the scripts:
 
-```python
-CONFIG["data_dir"] = "/path/to/your/data"
+```bash
+export NIH_DATA_DIR=/path/to/nih_data
 ```
+
+You can also pass the path directly with `--data_dir`.
 
 ---
 
@@ -92,13 +98,14 @@ docker build -t dacnet-env .
 ### Run the container
 
 ```bash
-docker run --gpus all -it --rm -v $(pwd):/workspace/DacNet dacnet-env
+docker run --gpus all -it --rm -v "$(pwd)":/workspace/DacNet dacnet-env
 ```
 
 Notes:
 - Requires CUDA-compatible GPU  
 - ≥8GB VRAM recommended  
 - If no GPU, remove `--gpus all`  
+- The image starts in `/workspace/DacNet` with WandB in offline mode by default.
 
 ---
 
@@ -107,14 +114,14 @@ Notes:
 Before running full training, verify the setup:
 
 ```bash
-bash reproducibility/test_run.sh
+bash reproduce.sh
 ```
 
 This checks:
-- dataset loading  
-- model initialization  
-- training loop execution  
-If this step fails, verify dataset paths and file structure before proceeding to full training.
+- Python environment setup
+- dependency installation
+- app utility imports
+If this step fails, resolve the Python environment before proceeding to full training.
 ---
 ## Running the Models
 
@@ -123,26 +130,37 @@ Once inside the Docker container, you can execute the training scripts.
 ### 1. Reproduction Baseline (CheXNet)
 
 ```bash
-python scripts/replicate_chexnet.py
+python scripts/replicate_chexnet.py --data_dir "$NIH_DATA_DIR"
 ```
 
 ### 2. DACNet (Improved CNN)
 
 ```bash
-python scripts/Dacnet.py
+python scripts/dacnet.py --data_dir "$NIH_DATA_DIR"
 ```
 
 ### 3. Vision Transformer
 
 ```bash
-python scripts/vit_transformer.py
+python scripts/vit_transformer.py --data_dir "$NIH_DATA_DIR"
 ```
 
 If you encounter CUDA memory errors, reduce batch size in the scripts.
 
 ---
  
-Evaluation results (AUC and F1) will print to the console. If WANDB is configured, it will log automatically; otherwise, the container defaults to offline mode. The best model checkpoint will be saved in a `models/<run_id>` folder.
+Evaluation results (AUC and F1) print to the console and are saved as `models/<run_id>/test_results.json`. If WandB is configured, pass `--wandb_mode online`; otherwise scripts default to offline mode. The best model checkpoint is saved in the same `models/<run_id>` folder.
+
+Useful reproducibility options:
+
+```bash
+python scripts/dacnet.py \
+  --data_dir "$NIH_DATA_DIR" \
+  --epochs 25 \
+  --batch_size 8 \
+  --output_dir models \
+  --wandb_mode offline
+```
 
 ---
 
@@ -254,7 +272,20 @@ Features:
 - Results rely on NIH labels (not expert annotations)  
 - Some implementation details are inferred  
 - Performance may vary across environments  
-- Dataset path must be manually configured  
+- The original CheXNet expert-labeled test set is not publicly available here
+- Full training requires the NIH ChestX-ray14 data and GPU time
+
+---
+
+## ReScience C Readiness
+
+This repository is public and includes open-source code, Docker setup, reproducibility metadata, result tables, figures, and reviewer-facing run commands. Before submission, complete the remaining journal artifacts:
+
+- Add the ReScience C article source and metadata using the journal template.
+- Archive the reviewed code release on Zenodo after acceptance to obtain a DOI.
+- Archive any non-Kaggle data artifacts or generated outputs needed for exact verification.
+- Use the Kaggle/cloud data access path in [DATA_ACCESS.md](DATA_ACCESS.md) for reviewer runs that should not require local image downloads.
+- Confirm the submission is a replication of work by non-collaborating authors, as required by ReScience C.
 
 ---
 
@@ -272,6 +303,3 @@ https://arxiv.org/abs/2505.06646
 Rajpurkar et al.  
 CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning  
 https://arxiv.org/abs/1711.05225
-
-
-

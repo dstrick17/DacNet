@@ -34,7 +34,7 @@ _wandb:
 batch_size:
     value: 16
 data_dir:
-    value: /projectnb/dl4ds/projects/dca_project/nih_data
+    value: <NIH_DATA_DIR>
 device:
     value: cuda
 epochs:
