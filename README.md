@@ -75,7 +75,7 @@ data/
 ├── images_012/
 ```
 
-If your dataset is stored elsewhere, update the path in the scripts:
+If your dataset is stored elsewhere, set `NIH_DATA_DIR`:
 
 ```bash
 export NIH_DATA_DIR=/path/to/nih_data
@@ -122,6 +122,25 @@ This checks:
 - dependency installation
 - app utility imports
 If this step fails, resolve the Python environment before proceeding to full training.
+
+### Kaggle GPU Smoke Test
+
+For reviewers using Kaggle with the NIH ChestX-ray14 dataset attached and a GPU enabled, install the Kaggle-compatible requirements and run a short real-data smoke test:
+
+```bash
+pip install -r requirements-kaggle.txt
+python scripts/dacnet.py \
+  --data_dir /kaggle/input/datasets/organizations/nih-chest-xrays/data \
+  --epochs 1 \
+  --batch_size 4 \
+  --num_workers 2 \
+  --max_train_batches 5 \
+  --max_eval_batches 2 \
+  --wandb_mode offline
+```
+
+This checks the Kaggle dataset mount, GPU execution, training loop, evaluation loop, checkpointing, and `models/<run_id>/test_results.json` output without running a full training job.
+
 ---
 ## Running the Models
 
