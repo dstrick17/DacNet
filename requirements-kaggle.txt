@@ -1,0 +1,12 @@
+wandb==0.15.0
+protobuf==3.20.3
+pandas
+scikit-learn
+tqdm
+Pillow
+numpy
+streamlit
+huggingface-hub
+transformers
+opencv-python
+pyyaml

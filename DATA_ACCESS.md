@@ -37,6 +37,22 @@ export NIH_DATA_DIR=/workspace/nih_data
 python scripts/dacnet.py --wandb_mode offline
 ```
 
+## Kaggle Python Environment
+
+Kaggle notebooks may run a newer Python/PyTorch stack than the pinned local `requirements.txt`. On Kaggle, prefer the notebook's preinstalled GPU-compatible `torch` and `torchvision`, then install the Kaggle-specific requirements:
+
+```bash
+pip install -r requirements-kaggle.txt
+python scripts/dacnet.py \
+  --data_dir /kaggle/input/datasets/organizations/nih-chest-xrays/data \
+  --epochs 1 \
+  --batch_size 4 \
+  --num_workers 2 \
+  --max_train_batches 5 \
+  --max_eval_batches 2 \
+  --wandb_mode offline
+```
+
 ## Not Recommended: HTTP Streaming During Training
 
 Training directly from remote HTTP URLs is possible in principle, but it is slower and less reliable for 112,000+ PNG files. For ReScience C review, a mounted Kaggle dataset or cloud disk is more reproducible.
