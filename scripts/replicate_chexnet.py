@@ -15,14 +15,15 @@ import wandb
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
-import time
 
 # Configuration settings
 CONFIG = {
-    "model": "train_chexnet",
+    "model": "chexnet_14_pathology_reproduction",
     "batch_size": 16,
-    "learning_rate": 0.001,  # Adjusted learning rate
-    "epochs": 20,  # Adjusted epochs
+    "learning_rate": 0.001,
+    "adam_beta1": 0.9,
+    "adam_beta2": 0.999,
+    "epochs": 20,
     "num_workers": 8,
     "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
     "data_dir": None,
@@ -32,6 +33,12 @@ CONFIG = {
     "seed": 42,
     "image_size": 224,  # Consistent image size
     "output_dir": "models",
+    "train_fraction": 0.70,
+    "val_fraction": 0.10,
+    "test_fraction": 0.20,
+    "max_train_batches": None,
+    "max_eval_batches": None,
+    "weights": "imagenet",
 }
 
 def discover_data_dir():
@@ -63,6 +70,24 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=CONFIG["num_workers"], help="DataLoader workers")
     parser.add_argument("--output_dir", default=CONFIG["output_dir"], help="Directory for checkpoints and results")
     parser.add_argument(
+        "--max_train_batches",
+        type=int,
+        default=None,
+        help="Optional batch limit for a smoke test; omit for full training",
+    )
+    parser.add_argument(
+        "--max_eval_batches",
+        type=int,
+        default=None,
+        help="Optional validation/test batch limit for a smoke test; omit for full evaluation",
+    )
+    parser.add_argument(
+        "--weights",
+        choices=["imagenet", "none"],
+        default=CONFIG["weights"],
+        help="Use ImageNet initialization for full reproduction; 'none' is for offline smoke tests",
+    )
+    parser.add_argument(
         "--wandb_mode",
         default=CONFIG["wandb_mode"],
         choices=["online", "offline", "disabled"],
@@ -81,6 +106,9 @@ CONFIG.update({
     "num_workers": args.num_workers,
     "output_dir": args.output_dir,
     "wandb_mode": args.wandb_mode,
+    "max_train_batches": args.max_train_batches,
+    "max_eval_batches": args.max_eval_batches,
+    "weights": args.weights,
 })
 
 random.seed(CONFIG["seed"])
@@ -134,22 +162,34 @@ df = df[df['View Position'].isin(['PA', 'AP'])]
 if df.empty:
     raise ValueError("No matching PNG images found. Expected images_001 ... images_012/images folders.")
 
-# Unique patient IDs
-unique_patients = df['Patient ID'].unique()
-
-# Split patients — not rows
+# Reproduce the 70%/10%/20% patient-level split described for the
+# 14-pathology CheXNet experiment. Sorting makes the seeded split reproducible.
+unique_patients = np.sort(df['Patient ID'].unique())
 train_val_patients, test_patients = train_test_split(
-unique_patients, test_size=0.02, random_state=CONFIG["seed"]
+    unique_patients,
+    test_size=CONFIG["test_fraction"],
+    random_state=CONFIG["seed"],
 )
 
 train_patients, val_patients = train_test_split(
-train_val_patients, test_size=0.052, random_state=CONFIG["seed"]
+    train_val_patients,
+    test_size=CONFIG["val_fraction"] / (1.0 - CONFIG["test_fraction"]),
+    random_state=CONFIG["seed"],
 )
 
 #Use those patients to filter full image rows
 train_df = df[df['Patient ID'].isin(train_patients)]
 val_df   = df[df['Patient ID'].isin(val_patients)]
 test_df  = df[df['Patient ID'].isin(test_patients)]
+
+print(
+    "Patient split: "
+    f"train={len(train_patients)}, val={len(val_patients)}, test={len(test_patients)}"
+)
+print(
+    "Image split: "
+    f"train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
+)
 
 
 # List of diseases we’re classifying
@@ -205,9 +245,10 @@ valloader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=Fal
 testloader = DataLoader(test_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 
 # Evaluation function
-def evaluate(model, testloader, criterion, device, desc="[Test]"):
+def evaluate(model, testloader, criterion, device, desc="[Test]", max_batches=None):
     model.eval()
     running_loss = 0.0
+    batches_processed = 0
 
     all_labels = []
     all_preds = []
@@ -215,39 +256,48 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
     with torch.no_grad():
         progress_bar = tqdm(testloader, desc=desc, leave=True)
 
-        for inputs, labels in progress_bar:
+        for batch_index, (inputs, labels) in enumerate(progress_bar):
+            if max_batches is not None and batch_index >= max_batches:
+                break
             inputs, labels = inputs.to(device), labels.to(device)
 
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             running_loss += loss.item()
+            batches_processed += 1
             preds = torch.sigmoid(outputs)
 
             all_labels.append(labels.cpu())
             all_preds.append(preds.cpu())
 
+    if not all_labels:
+        raise ValueError(f"{desc} loader produced no batches")
+
     all_labels = torch.cat(all_labels).numpy()
     all_preds = torch.cat(all_preds).numpy()
-    test_loss = running_loss / len(testloader)
+    test_loss = running_loss / batches_processed
 
     # Compute AUC for each class
     auc_scores = [
         roc_auc_score(all_labels[:, i], all_preds[:, i])
         if len(np.unique(all_labels[:, i])) > 1 else float("nan")
-        for i in range(14)
+        for i in range(len(disease_list))
     ]
     avg_auc = np.nanmean(auc_scores)
 
     for i, disease in enumerate(disease_list):
         print(f"{desc} {disease} AUC-ROC: {auc_scores[i]:.4f}")
 
-    auc_dict = {disease_list[i]: auc_scores[i] for i in range(14)}
+    auc_dict = {disease_list[i]: auc_scores[i] for i in range(len(disease_list))}
 
     # Compute binary predictions for all classes
     preds_binary = (all_preds > 0.5).astype(int)
 
     # Per-class F1 scores
-    f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
+    f1_scores = [
+        f1_score(all_labels[:, i], preds_binary[:, i], zero_division=0)
+        for i in range(len(disease_list))
+    ]
     avg_f1 = np.mean(f1_scores)
 
     # Print per-class F1
@@ -255,22 +305,43 @@ def evaluate(model, testloader, criterion, device, desc="[Test]"):
         print(f"{desc} {disease} F1 Score: {f1_scores[i]:.4f}")
 
     # Build F1 dictionary
-    f1_dict = {disease_list[i]: f1_scores[i] for i in range(14)}
+    f1_dict = {disease_list[i]: f1_scores[i] for i in range(len(disease_list))}
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
 
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
-# Load and modify the model
-model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+# Load and modify the model. Full reproduction uses ImageNet initialization.
+initial_weights = DenseNet121_Weights.IMAGENET1K_V1 if CONFIG["weights"] == "imagenet" else None
+model = densenet121(weights=initial_weights)
 model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
 
 # Define loss function and optimizer
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-5) #Added weight decay.
-# betas=(0.9, 0.999) - this is default in pytorch
+class SummedBinaryCrossEntropy(nn.Module):
+    """Sum unweighted BCE over labels, then average over the batch."""
 
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, factor=0.1)
+    def forward(self, logits, targets):
+        per_label_loss = nn.functional.binary_cross_entropy_with_logits(
+            logits,
+            targets,
+            reduction="none",
+        )
+        return per_label_loss.sum(dim=1).mean()
+
+
+criterion = SummedBinaryCrossEntropy()
+optimizer = optim.Adam(
+    model.parameters(),
+    lr=CONFIG["learning_rate"],
+    betas=(CONFIG["adam_beta1"], CONFIG["adam_beta2"]),
+)
+
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    mode="min",
+    patience=0,
+    factor=0.1,
+)
 
 
 
@@ -282,7 +353,10 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
     running_loss = 0.0
     progress_bar = tqdm(trainloader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]", leave=True)
 
+    batches_processed = 0
     for i, (inputs, labels) in enumerate(progress_bar):
+        if CONFIG["max_train_batches"] is not None and i >= CONFIG["max_train_batches"]:
+            break
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -292,16 +366,26 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         optimizer.step()
 
         running_loss += loss.item()
+        batches_processed += 1
         progress_bar.set_postfix({"loss": running_loss / (i + 1)})
 
-    train_loss = running_loss / len(trainloader)
+    if batches_processed == 0:
+        raise ValueError("Training loader produced no batches")
+    train_loss = running_loss / batches_processed
     return train_loss
 
 def validate(model, valloader, criterion, device):
-    val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(model, valloader, criterion, device, desc="[Validate]")
+    val_loss, val_auc, val_f1, auc_dict, f1_dict = evaluate(
+        model,
+        valloader,
+        criterion,
+        device,
+        desc="[Validate]",
+        max_batches=CONFIG["max_eval_batches"],
+    )
     return val_loss, val_auc, val_f1, auc_dict, f1_dict
 
- # Training loop with WandB and timestamped checkpoints
+# Training loop with WandB and a stable best-checkpoint path
 wandb.init(project=CONFIG["wandb_project"], config=CONFIG, mode=CONFIG["wandb_mode"])
 wandb.watch(model, log="all")
 
@@ -309,7 +393,20 @@ run_id = wandb.run.id
 checkpoint_dir = os.path.join(CONFIG["output_dir"], run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
 
-best_val_auc = 0.0
+# Record the exact patient assignment used for this run.
+split_rows = []
+for split_name, patient_ids in (
+    ("train", train_patients),
+    ("validation", val_patients),
+    ("test", test_patients),
+):
+    split_rows.extend({"Patient ID": patient_id, "split": split_name} for patient_id in patient_ids)
+pd.DataFrame(split_rows).sort_values(["split", "Patient ID"]).to_csv(
+    os.path.join(checkpoint_dir, "patient_splits.csv"),
+    index=False,
+)
+
+best_val_loss = float("inf")
 patience_counter = 0
 
 for epoch in range(CONFIG["epochs"]):
@@ -327,13 +424,11 @@ for epoch in range(CONFIG["epochs"]):
         "auc_dict": auc_dict,
     })
 
-    if val_auc > best_val_auc:
-        best_val_auc = val_auc
-
+    # The original CheXNet protocol selects the model with lowest validation loss.
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
         patience_counter = 0
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-
-        checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
+        checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
         torch.save(model.state_dict(), checkpoint_path)
         wandb.save(checkpoint_path)
 
@@ -344,10 +439,16 @@ for epoch in range(CONFIG["epochs"]):
             print("Early stopping triggered.")
             break
 
-# Evaluate the best model
-best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
-model.load_state_dict(torch.load(best_checkpoint_path))
-test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(model, testloader, criterion, CONFIG["device"])
+# Evaluate the model with the lowest validation loss.
+best_checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
+model.load_state_dict(torch.load(best_checkpoint_path, map_location=CONFIG["device"]))
+test_loss, test_auc, test_f1, auc_dict, f1_dict = evaluate(
+    model,
+    testloader,
+    criterion,
+    CONFIG["device"],
+    max_batches=CONFIG["max_eval_batches"],
+)
 
 results = {
     "model": CONFIG["model"],
@@ -357,6 +458,17 @@ results = {
     "test_auc_dict": auc_dict,
     "test_f1_dict": f1_dict,
     "checkpoint": best_checkpoint_path,
+    "patient_splits": os.path.join(checkpoint_dir, "patient_splits.csv"),
+    "patient_counts": {
+        "train": len(train_patients),
+        "validation": len(val_patients),
+        "test": len(test_patients),
+    },
+    "image_counts": {
+        "train": len(train_df),
+        "validation": len(val_df),
+        "test": len(test_df),
+    },
     "config": CONFIG,
 }
 with open(os.path.join(checkpoint_dir, "test_results.json"), "w", encoding="utf-8") as f:
