@@ -1,0 +1,73 @@
+{
+  "model": "chexnet_14_pathology_reproduction",
+  "test_loss": 2.1324836436867542,
+  "test_auc": 0.8124544738644026,
+  "test_f1": 0.12709002926245724,
+  "test_auc_dict": {
+    "Atelectasis": 0.7897690470107052,
+    "Cardiomegaly": 0.9169251064963203,
+    "Consolidation": 0.8003258381590006,
+    "Edema": 0.8832189653224894,
+    "Effusion": 0.8744584912811271,
+    "Emphysema": 0.876883855726036,
+    "Fibrosis": 0.7824437646257072,
+    "Hernia": 0.8471073451406995,
+    "Infiltration": 0.6948429340485318,
+    "Mass": 0.8161229497224948,
+    "Nodule": 0.7219341681438565,
+    "Pleural_Thickening": 0.7812624488389488,
+    "Pneumonia": 0.7385684910327768,
+    "Pneumothorax": 0.8504992285529422
+  },
+  "test_f1_dict": {
+    "Atelectasis": 0.1370399373531715,
+    "Cardiomegaly": 0.31624863685932386,
+    "Consolidation": 0.0,
+    "Edema": 0.004338394793926247,
+    "Effusion": 0.43766772383508173,
+    "Emphysema": 0.21238938053097345,
+    "Fibrosis": 0.0,
+    "Hernia": 0.0,
+    "Infiltration": 0.15805595262405556,
+    "Mass": 0.20730797912005966,
+    "Nodule": 0.07355021216407355,
+    "Pleural_Thickening": 0.0,
+    "Pneumonia": 0.0,
+    "Pneumothorax": 0.232662192393736
+  },
+  "checkpoint": "best_model.pth",
+  "patient_splits": "patient_splits.csv",
+  "patient_counts": {
+    "train": 21563,
+    "validation": 3081,
+    "test": 6161
+  },
+  "image_counts": {
+    "train": 78614,
+    "validation": 11212,
+    "test": 22294
+  },
+  "config": {
+    "model": "chexnet_14_pathology_reproduction",
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "adam_beta1": 0.9,
+    "adam_beta2": 0.999,
+    "epochs": 20,
+    "num_workers": 4,
+    "device": "cuda",
+    "data_dir": "/kaggle/input/datasets/organizations/nih-chest-xrays/data",
+    "wandb_project": "X-Ray Classification",
+    "wandb_mode": "disabled",
+    "patience": 5,
+    "seed": 42,
+    "image_size": 224,
+    "output_dir": "/kaggle/working/chexnet-full",
+    "train_fraction": 0.7,
+    "val_fraction": 0.1,
+    "test_fraction": 0.2,
+    "max_train_batches": null,
+    "max_eval_batches": null,
+    "weights": "imagenet"
+  }
+}
