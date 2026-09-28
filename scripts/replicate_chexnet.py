@@ -1,5 +1,6 @@
 import os
 import argparse
+import hashlib
 import json
 import random
 import pandas as pd
@@ -12,7 +13,7 @@ from sklearn.model_selection import train_test_split
 import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import wandb
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import precision_recall_curve, roc_auc_score, f1_score
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
 
@@ -93,11 +94,24 @@ def parse_args():
         choices=["online", "offline", "disabled"],
         help="Weights & Biases logging mode",
     )
+    parser.add_argument(
+        "--evaluate_only",
+        action="store_true",
+        help="Load an existing checkpoint and evaluate fixed and validation-tuned F1 thresholds",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        help="Path to best_model.pth; required with --evaluate_only",
+    )
     return parser.parse_args()
 
 args = parse_args()
 if not args.data_dir:
     raise ValueError("Provide --data_dir or set NIH_DATA_DIR to the NIH ChestX-ray14 directory.")
+if args.evaluate_only and not args.checkpoint:
+    raise ValueError("Provide --checkpoint when using --evaluate_only.")
+if args.checkpoint and not os.path.isfile(args.checkpoint):
+    raise FileNotFoundError(f"Checkpoint not found: {args.checkpoint}")
 
 CONFIG.update({
     "data_dir": args.data_dir,
@@ -245,7 +259,43 @@ valloader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=Fal
 testloader = DataLoader(test_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 
 # Evaluation function
-def evaluate(model, testloader, criterion, device, desc="[Test]", max_batches=None):
+def get_optimal_thresholds(labels, predictions):
+    """Select one F1-maximizing threshold per class from validation data."""
+    thresholds = []
+    for class_index in range(predictions.shape[1]):
+        precision, recall, candidates = precision_recall_curve(
+            labels[:, class_index], predictions[:, class_index]
+        )
+        if len(candidates) == 0:
+            thresholds.append(0.5)
+            continue
+        f1_scores = 2 * precision[:-1] * recall[:-1] / (
+            precision[:-1] + recall[:-1] + 1e-8
+        )
+        thresholds.append(float(candidates[int(np.argmax(f1_scores))]))
+    return thresholds
+
+
+def calculate_f1(labels, predictions, thresholds):
+    thresholds = np.asarray(thresholds, dtype=float).reshape(1, -1)
+    # precision_recall_curve defines each candidate using score >= threshold.
+    binary_predictions = (predictions >= thresholds).astype(int)
+    scores = [
+        f1_score(labels[:, i], binary_predictions[:, i], zero_division=0)
+        for i in range(len(disease_list))
+    ]
+    return float(np.mean(scores)), dict(zip(disease_list, scores))
+
+
+def evaluate(
+    model,
+    testloader,
+    criterion,
+    device,
+    desc="[Test]",
+    max_batches=None,
+    return_outputs=False,
+):
     model.eval()
     running_loss = 0.0
     batches_processed = 0
@@ -291,27 +341,27 @@ def evaluate(model, testloader, criterion, device, desc="[Test]", max_batches=No
     auc_dict = {disease_list[i]: auc_scores[i] for i in range(len(disease_list))}
 
     # Compute binary predictions for all classes
-    preds_binary = (all_preds > 0.5).astype(int)
-
-    # Per-class F1 scores
-    f1_scores = [
-        f1_score(all_labels[:, i], preds_binary[:, i], zero_division=0)
-        for i in range(len(disease_list))
-    ]
-    avg_f1 = np.mean(f1_scores)
+    avg_f1, f1_dict = calculate_f1(
+        all_labels,
+        all_preds,
+        thresholds=[0.5] * len(disease_list),
+    )
 
     # Print per-class F1
     for i, disease in enumerate(disease_list):
-        print(f"{desc} {disease} F1 Score: {f1_scores[i]:.4f}")
-
-    # Build F1 dictionary
-    f1_dict = {disease_list[i]: f1_scores[i] for i in range(len(disease_list))}
+        print(f"{desc} {disease} F1 Score: {f1_dict[disease]:.4f}")
     print(f"{desc} Loss: {test_loss:.4f}, Avg AUC-ROC: {avg_auc:.4f}, Avg F1 Score: {avg_f1:.4f}")
 
+    if return_outputs:
+        return test_loss, avg_auc, avg_f1, auc_dict, f1_dict, all_labels, all_preds
     return test_loss, avg_auc, avg_f1, auc_dict, f1_dict
 
 # Load and modify the model. Full reproduction uses ImageNet initialization.
-initial_weights = DenseNet121_Weights.IMAGENET1K_V1 if CONFIG["weights"] == "imagenet" else None
+initial_weights = (
+    DenseNet121_Weights.IMAGENET1K_V1
+    if CONFIG["weights"] == "imagenet" and not args.evaluate_only
+    else None
+)
 model = densenet121(weights=initial_weights)
 model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
@@ -330,6 +380,111 @@ class SummedBinaryCrossEntropy(nn.Module):
 
 
 criterion = SummedBinaryCrossEntropy()
+
+
+if args.evaluate_only:
+    checkpoint_path = os.path.abspath(args.checkpoint)
+    checkpoint_sha256 = hashlib.sha256()
+    with open(checkpoint_path, "rb") as checkpoint_file:
+        for chunk in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
+            checkpoint_sha256.update(chunk)
+    model.load_state_dict(torch.load(checkpoint_path, map_location=CONFIG["device"]))
+
+    (
+        val_loss,
+        val_auc,
+        val_f1_fixed,
+        val_auc_dict,
+        val_f1_fixed_dict,
+        val_labels,
+        val_predictions,
+    ) = evaluate(
+        model,
+        valloader,
+        criterion,
+        CONFIG["device"],
+        desc="[Validate]",
+        max_batches=CONFIG["max_eval_batches"],
+        return_outputs=True,
+    )
+    thresholds = get_optimal_thresholds(val_labels, val_predictions)
+
+    (
+        test_loss,
+        test_auc,
+        test_f1_fixed,
+        test_auc_dict,
+        test_f1_fixed_dict,
+        test_labels,
+        test_predictions,
+    ) = evaluate(
+        model,
+        testloader,
+        criterion,
+        CONFIG["device"],
+        desc="[Test]",
+        max_batches=CONFIG["max_eval_batches"],
+        return_outputs=True,
+    )
+    test_f1_tuned, test_f1_tuned_dict = calculate_f1(
+        test_labels,
+        test_predictions,
+        thresholds,
+    )
+
+    threshold_dict = dict(zip(disease_list, thresholds))
+    print("\nValidation-selected thresholds and held-out test F1:")
+    for disease in disease_list:
+        print(
+            f"{disease}: threshold={threshold_dict[disease]:.6f}, "
+            f"test F1={test_f1_tuned_dict[disease]:.4f}"
+        )
+    print(f"Test macro F1 at fixed 0.5: {test_f1_fixed:.4f}")
+    print(f"Test macro F1 with validation thresholds: {test_f1_tuned:.4f}")
+
+    results = {
+        "model": CONFIG["model"],
+        "evaluation": "validation-selected per-class F1 thresholds",
+        "checkpoint": os.path.basename(checkpoint_path),
+        "checkpoint_sha256": checkpoint_sha256.hexdigest(),
+        "validation_loss": val_loss,
+        "validation_auc": val_auc,
+        "validation_f1_fixed_0_5": val_f1_fixed,
+        "validation_auc_dict": val_auc_dict,
+        "validation_f1_fixed_0_5_dict": val_f1_fixed_dict,
+        "validation_thresholds": threshold_dict,
+        "test_loss": test_loss,
+        "test_auc": test_auc,
+        "test_auc_dict": test_auc_dict,
+        "test_f1_fixed_0_5": test_f1_fixed,
+        "test_f1_fixed_0_5_dict": test_f1_fixed_dict,
+        "test_f1_validation_thresholds": test_f1_tuned,
+        "test_f1_validation_thresholds_dict": test_f1_tuned_dict,
+        "patient_counts": {
+            "train": len(train_patients),
+            "validation": len(val_patients),
+            "test": len(test_patients),
+        },
+        "image_counts": {
+            "train": len(train_df),
+            "validation": len(val_df),
+            "test": len(test_df),
+        },
+        "config": CONFIG,
+        "note": (
+            "Thresholds were selected only on the validation set and applied "
+            "unchanged to the held-out test set. This is a secondary analysis, "
+            "not a reproduction of the unavailable expert-labeled F1 evaluation."
+        ),
+    }
+    os.makedirs(CONFIG["output_dir"], exist_ok=True)
+    results_path = os.path.join(CONFIG["output_dir"], "thresholded_f1_results.json")
+    with open(results_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, default=float)
+    print(f"Saved threshold evaluation to: {results_path}")
+    raise SystemExit(0)
+
+
 optimizer = optim.Adam(
     model.parameters(),
     lr=CONFIG["learning_rate"],

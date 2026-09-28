@@ -152,6 +152,23 @@ Once inside the Docker container, you can execute the training scripts.
 python scripts/replicate_chexnet.py --data_dir "$NIH_DATA_DIR"
 ```
 
+To calculate secondary F1 scores from an existing trained checkpoint, select
+one threshold per pathology on the validation set and apply those thresholds
+unchanged to the held-out test set:
+
+```bash
+python scripts/replicate_chexnet.py \
+  --data_dir "$NIH_DATA_DIR" \
+  --evaluate_only \
+  --checkpoint /path/to/best_model.pth \
+  --output_dir models/chexnet-threshold-evaluation
+```
+
+This writes `thresholded_f1_results.json` containing both fixed-0.5 and
+validation-thresholded F1 scores. This is a secondary analysis of the public
+14-pathology test split, not a reproduction of the original expert-labeled F1
+comparison because that expert-labeled test set is not publicly available.
+
 ### 2. DACNet (Improved CNN)
 
 ```bash
