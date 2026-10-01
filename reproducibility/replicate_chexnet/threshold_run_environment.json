@@ -1,0 +1,26 @@
+{
+  "saved_at_utc": "2026-09-28T02:24:17.373858+00:00",
+  "git_commit": "cae6fe14c2fa06236df8c8b19ff117f95c4babd4",
+  "python": "3.12.13",
+  "torch": "2.10.0+cu128",
+  "torchvision": "0.25.0+cu128",
+  "gpu": "Tesla T4",
+  "checkpoint_sha256": "7ae7fd98d49ae16ae1d5811fb9a7f7a7c40ecfd1bbd0c3166ba584c38ec6fb53",
+  "command": [
+    "/usr/bin/python3",
+    "scripts/replicate_chexnet.py",
+    "--data_dir",
+    "/kaggle/input/datasets/nih-chest-xrays/data",
+    "--evaluate_only",
+    "--checkpoint",
+    "/kaggle/input/notebooks/danielstrick/chexnetreplicate/chexnet-full/aszz8zkl/best_model.pth",
+    "--batch_size",
+    "16",
+    "--num_workers",
+    "4",
+    "--wandb_mode",
+    "disabled",
+    "--output_dir",
+    "/kaggle/working/chexnet-threshold-evaluation"
+  ]
+}

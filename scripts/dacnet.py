@@ -8,17 +8,23 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from sklearn.model_selection import train_test_split
 import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import wandb
 from sklearn.metrics import roc_auc_score, f1_score, precision_recall_curve
 import numpy as np
 from torchvision.models import densenet121, DenseNet121_Weights
-import time
+
+REPOSITORY_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_SPLIT_FILE = os.path.join(
+    REPOSITORY_ROOT,
+    "reproducibility",
+    "replicate_chexnet",
+    "patient_splits.csv",
+)
 
 CONFIG = {
-    "model": "dannynet",
+    "model": "dacnet",
     "batch_size": 8,
     "learning_rate": 0.00005,
     "epochs": 25,
@@ -33,6 +39,11 @@ CONFIG = {
     "output_dir": "models",
     "max_train_batches": None,
     "max_eval_batches": None,
+    "split_file": DEFAULT_SPLIT_FILE,
+    "train_fraction": 0.70,
+    "val_fraction": 0.10,
+    "test_fraction": 0.20,
+    "weights": "imagenet",
 }
 
 def discover_data_dir():
@@ -64,6 +75,17 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=CONFIG["batch_size"], help="Batch size")
     parser.add_argument("--num_workers", type=int, default=CONFIG["num_workers"], help="DataLoader workers")
     parser.add_argument("--output_dir", default=CONFIG["output_dir"], help="Directory for checkpoints and results")
+    parser.add_argument(
+        "--split_file",
+        default=CONFIG["split_file"],
+        help="Patient split CSV shared with the corrected CheXNet baseline",
+    )
+    parser.add_argument(
+        "--weights",
+        choices=["imagenet", "none"],
+        default=CONFIG["weights"],
+        help="Use ImageNet initialization for full training; 'none' is for offline smoke tests",
+    )
     parser.add_argument("--max_train_batches", type=int, default=CONFIG["max_train_batches"], help="Optional cap on training batches for smoke tests")
     parser.add_argument("--max_eval_batches", type=int, default=CONFIG["max_eval_batches"], help="Optional cap on validation/test batches for smoke tests")
     parser.add_argument(
@@ -87,6 +109,8 @@ CONFIG.update({
     "wandb_mode": args.wandb_mode,
     "max_train_batches": args.max_train_batches,
     "max_eval_batches": args.max_eval_batches,
+    "split_file": args.split_file,
+    "weights": args.weights,
 })
 
 random.seed(CONFIG["seed"])
@@ -110,8 +134,9 @@ transform_test = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
- # Load and modify the model
-model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+# Load and modify the model. Full training uses ImageNet initialization.
+initial_weights = DenseNet121_Weights.IMAGENET1K_V1 if CONFIG["weights"] == "imagenet" else None
+model = densenet121(weights=initial_weights)
 model.classifier = nn.Linear(model.classifier.in_features, 14)
 model = model.to(CONFIG["device"])
 
@@ -166,25 +191,58 @@ for folder in image_folders:
 
 # Filter the CSV to include only images that are present in the folders
 df = df[df['Image Index'].isin(image_to_folder.keys())]
+df = df[df['View Position'].isin(['PA', 'AP'])]
 if df.empty:
     raise ValueError("No matching PNG images found. Expected images_001 ... images_012/images folders.")
 
-# Unique patient IDs
-unique_patients = df['Patient ID'].unique()
+# Use the exact patient assignments from the corrected CheXNet baseline.
+split_file = os.path.abspath(CONFIG["split_file"])
+if not os.path.exists(split_file):
+    raise FileNotFoundError(f"Patient split file not found: {split_file}")
 
-# Split patients — not rows
-train_val_patients, test_patients = train_test_split(
-unique_patients, test_size=0.02, random_state=CONFIG["seed"]
-)
+split_df = pd.read_csv(split_file)
+required_split_columns = {"Patient ID", "split"}
+if not required_split_columns.issubset(split_df.columns):
+    raise ValueError(f"Split file must contain columns: {sorted(required_split_columns)}")
+if split_df["Patient ID"].duplicated().any():
+    raise ValueError("Split file contains duplicate patient IDs.")
 
-train_patients, val_patients = train_test_split(
-train_val_patients, test_size=0.052, random_state=CONFIG["seed"]
-)
+expected_split_names = {"train", "validation", "test"}
+actual_split_names = set(split_df["split"].unique())
+if actual_split_names != expected_split_names:
+    raise ValueError(
+        f"Split file must contain {sorted(expected_split_names)}; found {sorted(actual_split_names)}"
+    )
+
+available_patients = set(df["Patient ID"].unique())
+assigned_patients = set(split_df["Patient ID"])
+missing_assignments = available_patients - assigned_patients
+missing_images = assigned_patients - available_patients
+if missing_assignments or missing_images:
+    raise ValueError(
+        "Dataset and split file patient IDs do not match: "
+        f"{len(missing_assignments)} dataset patients are unassigned and "
+        f"{len(missing_images)} assigned patients have no images."
+    )
+
+train_patients = split_df.loc[split_df["split"] == "train", "Patient ID"].to_numpy()
+val_patients = split_df.loc[split_df["split"] == "validation", "Patient ID"].to_numpy()
+test_patients = split_df.loc[split_df["split"] == "test", "Patient ID"].to_numpy()
 
 #Use those patients to filter full image rows
 train_df = df[df['Patient ID'].isin(train_patients)]
 val_df   = df[df['Patient ID'].isin(val_patients)]
 test_df  = df[df['Patient ID'].isin(test_patients)]
+
+print(f"Using patient split file: {split_file}")
+print(
+    "Patient split: "
+    f"train={len(train_patients)}, val={len(val_patients)}, test={len(test_patients)}"
+)
+print(
+    "Image split: "
+    f"train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
+)
 
 
 # List of diseases we’re classifying
@@ -245,7 +303,7 @@ def get_optimal_thresholds(labels, preds):
     for i in range(preds.shape[1]):
         precision, recall, thresh = precision_recall_curve(labels[:, i], preds[:, i])
         f1_scores = 2 * (precision * recall) / (precision + recall + 1e-8)
-        best_threshold = thresh[np.argmax(f1_scores)] if len(thresh) > 0 else 0.5
+        best_threshold = thresh[np.argmax(f1_scores[:-1])] if len(thresh) > 0 else 0.5
         thresholds.append(best_threshold)
     return thresholds
 
@@ -282,9 +340,12 @@ def evaluate(model, loader, criterion, device, desc="[Test]", thresholds=None):
     auc_scores = [
         roc_auc_score(all_labels[:, i], all_preds[:, i])
         if len(np.unique(all_labels[:, i])) > 1 else float("nan")
-        for i in range(14)
+        for i in range(len(disease_list))
     ]
-    f1_scores = [f1_score(all_labels[:, i], preds_binary[:, i]) for i in range(14)]
+    f1_scores = [
+        f1_score(all_labels[:, i], preds_binary[:, i], zero_division=0)
+        for i in range(len(disease_list))
+    ]
 
     avg_auc = np.nanmean(auc_scores)
     avg_f1 = np.mean(f1_scores)
@@ -350,6 +411,10 @@ wandb.config.update({
 run_id = wandb.run.id
 checkpoint_dir = os.path.join(CONFIG["output_dir"], run_id)
 os.makedirs(checkpoint_dir, exist_ok=True)
+split_df.sort_values(["split", "Patient ID"]).to_csv(
+    os.path.join(checkpoint_dir, "patient_splits.csv"),
+    index=False,
+)
 
 best_val_auc = 0.0
 patience_counter = 0
@@ -377,8 +442,7 @@ for epoch in range(CONFIG["epochs"]):
         best_thresholds = [val_stats["thresholds"][disease] for disease in disease_list]
 
         patience_counter = 0
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-        checkpoint_path = os.path.join(checkpoint_dir, f"best_model_{timestamp}.pth")
+        checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
         torch.save(model.state_dict(), checkpoint_path)
         wandb.save(checkpoint_path)
     else:
@@ -388,8 +452,8 @@ for epoch in range(CONFIG["epochs"]):
             break
 
 # Evaluate the best model
-best_checkpoint_path = sorted([os.path.join(checkpoint_dir, f) for f in os.listdir(checkpoint_dir) if f.startswith('best_model_')])[-1]
-model.load_state_dict(torch.load(best_checkpoint_path))
+best_checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
+model.load_state_dict(torch.load(best_checkpoint_path, map_location=CONFIG["device"]))
 test_stats = evaluate(model, testloader, criterion, CONFIG["device"], thresholds=best_thresholds)
 results = {
     "model": CONFIG["model"],
@@ -399,7 +463,18 @@ results = {
     "test_auc_dict": test_stats["auc_dict"],
     "test_f1_dict": test_stats["f1_dict"],
     "thresholds": test_stats["thresholds"],
-    "checkpoint": best_checkpoint_path,
+    "checkpoint": "best_model.pth",
+    "patient_splits": "patient_splits.csv",
+    "patient_counts": {
+        "train": len(train_patients),
+        "validation": len(val_patients),
+        "test": len(test_patients),
+    },
+    "image_counts": {
+        "train": len(train_df),
+        "validation": len(val_df),
+        "test": len(test_df),
+    },
     "config": CONFIG,
 }
 with open(os.path.join(checkpoint_dir, "test_results.json"), "w", encoding="utf-8") as f:
