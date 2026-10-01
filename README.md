@@ -206,11 +206,13 @@ python scripts/dacnet.py \
 ### replicate_chexnet.py (Baseline)
 DenseNet-121 reproduction of CheXNet.
 - Multi-label classification (14 diseases)  
-- BCEWithLogitsLoss  
-- Patient-level split  
-- Evaluated using AUC and F1  
+- Sum of unweighted binary cross-entropy losses, matching the original
+  paper's 14-pathology experiment
+- Patient-level split
+- AUROC as the primary reproduction metric
+- Fixed-0.5 and validation-thresholded F1 as secondary metrics
 
-### Dacnet.py (DACNet)
+### dacnet.py (DACNet)
 Improved CNN designed for class imbalance.
 - DenseNet-121 backbone  
 - Focal Loss  
@@ -225,51 +227,64 @@ Transformer-based baseline.
 
 ---
 
-**Performance (Test AUC per Disease)**
-| Pathology           | original CheXNet | Dacnet.py | vit_transformer.py | replicate_chexnet.py |
-|---------------------|------------------|----------|-------------------|--------------------|
-| Atelectasis         | 0.8094           | **0.817** | 0.774           | 0.762              |
-| Cardiomegaly        | 0.9248           | **0.932** | 0.89            | 0.922              |
-| Consolidation       | **0.7901**       | 0.783     | 0.789           | 0.746              |
-| Edema               | 0.8878           | **0.896** | 0.876           | 0.864              |
-| Effusion            | 0.8638           | **0.905** | 0.857           | 0.883              |
-| Emphysema           | 0.9371           | **0.963** | 0.828           | 0.85               |
-| Fibrosis            | 0.8047           | **0.814** | 0.772           | 0.766              |
-| Hernia              | 0.9164           | **0.997** | 0.872           | 0.925              |
-| Infiltration        | **0.7345**       | 0.708     | 0.7             | 0.673              |
-| Mass                | 0.8676           | **0.919** | 0.783           | 0.824              |
-| Nodule              | 0.7802           | **0.789** | 0.673           | 0.646              |
-| Pleural Thickening  | **0.8062**       | 0.801     | 0.766           | 0.756              |
-| Pneumonia           | **0.768**        | 0.74      | 0.713           | 0.656              |
-| Pneumothorax        | **0.8887**       | 0.875     | 0.821           | 0.827              |
+## Verified Results
 
----
-### Average metrics across all diseases for each model
-| Metric  | DacNet | ViT Transformer | Replicate CheXNet |
-|---------|----------|------------------|--------------------|
-| Loss    | **0.0416** | 0.1589           | 0.1661             |
-| AUC     | **0.8527** | 0.7940           | 0.7928             |
-| F1      | **0.3861** | 0.1114           | 0.0763             |
----
-### F1 Score Comparison for Each Model
+The final CheXNet reproduction and DACNet extension use the same patient-level
+70%/10%/20% split: 21,563 training, 3,081 validation, and 6,161 test patients
+(78,614/11,212/22,294 images). Machine-readable results and provenance are in
+[`reproducibility/`](reproducibility/).
 
-| Disease             | DacNet | ViT Transformer  | Replicate CheXNet |
-|---------------------|----------|------------------|--------------------|
-| **AVERAGE**         | **0.386** | 0.111           | 0.076              |
-| Atelectasis         | **0.421** | 0.127           | 0.026              |
-| Cardiomegaly        | **0.532** | 0.264           | 0.423              |
-| Consolidation       | **0.226** | 0               | 0                  |
-| Edema               | **0.286** | 0.004           | 0                  |
-| Effusion            | **0.623** | 0.427           | 0.459              |
-| Emphysema           | **0.516** | 0.079           | 0                  |
-| Fibrosis            | **0.127** | 0               | 0                  |
-| Hernia              | **0.750** | 0               | 0                  |
-| Infiltration        | **0.395** | 0.193           | 0.061              |
-| Mass                | **0.477** | 0.213           | 0.079              |
-| Nodule              | **0.352** | 0.041           | 0                  |
-| Pleural Thickening  | **0.258** | 0               | 0                  |
-| Pneumonia           | **0.082** | 0               | 0                  |
-| Pneumothorax        | **0.360** | 0.211           | 0.021              |
+### Test AUROC per pathology
+
+| Pathology | Original CheXNet | CheXNet reproduction | DACNet extension |
+|---|---:|---:|---:|
+| Atelectasis | 0.8094 | 0.7898 | 0.8281 |
+| Cardiomegaly | 0.9248 | 0.9169 | 0.9134 |
+| Consolidation | 0.7901 | 0.8003 | 0.8236 |
+| Edema | 0.8878 | 0.8832 | 0.8952 |
+| Effusion | 0.8638 | 0.8745 | 0.8831 |
+| Emphysema | 0.9371 | 0.8769 | 0.9199 |
+| Fibrosis | 0.8047 | 0.7824 | 0.8266 |
+| Hernia | 0.9164 | 0.8471 | 0.9510 |
+| Infiltration | 0.7345 | 0.6948 | 0.7122 |
+| Mass | 0.8676 | 0.8161 | 0.8623 |
+| Nodule | 0.7802 | 0.7219 | 0.7940 |
+| Pleural Thickening | 0.8062 | 0.7813 | 0.8076 |
+| Pneumonia | 0.7680 | 0.7386 | 0.7633 |
+| Pneumothorax | 0.8887 | 0.8505 | 0.8839 |
+| **Macro average** | Not reported | **0.8125** | **0.8474** |
+
+### Secondary F1 analysis
+
+One threshold per pathology was selected on the validation set and applied
+unchanged to the held-out test set. This does not reproduce the original
+expert-labeled pneumonia F1 comparison, whose test labels are not public.
+
+| Pathology | CheXNet reproduction | DACNet extension |
+|---|---:|---:|
+| Atelectasis | 0.3654 | 0.4127 |
+| Cardiomegaly | 0.4014 | 0.3942 |
+| Consolidation | 0.2275 | 0.2445 |
+| Edema | 0.2305 | 0.2396 |
+| Effusion | 0.5158 | 0.5313 |
+| Emphysema | 0.3626 | 0.4723 |
+| Fibrosis | 0.1312 | 0.1650 |
+| Hernia | 0.1026 | 0.4444 |
+| Infiltration | 0.4038 | 0.4242 |
+| Mass | 0.3200 | 0.3966 |
+| Nodule | 0.2326 | 0.3211 |
+| Pleural Thickening | 0.2004 | 0.2248 |
+| Pneumonia | 0.0772 | 0.0863 |
+| Pneumothorax | 0.3671 | 0.4218 |
+| **Macro average** | **0.2813** | **0.3414** |
+
+At a fixed threshold of 0.5, the CheXNet reproduction has a macro F1 of
+0.1271. The validation-thresholded values above are the appropriate comparison
+with DACNet's per-pathology threshold evaluation.
+
+The Vision Transformer remains a supplementary experiment. Its historical
+results are not included in this verified comparison because it has not been
+rerun on the shared final split.
 
 
 ---
@@ -319,7 +334,7 @@ This repository is public and includes open-source code, Docker setup, reproduci
 
 - Add the ReScience C article source and metadata using the journal template.
 - Archive the reviewed code release on Zenodo after acceptance to obtain a DOI.
-- Archive any non-Kaggle data artifacts or generated outputs needed for exact verification.
+- Attach the final checkpoints and complete run bundles to the reviewed GitHub release.
 - Use the Kaggle/cloud data access path in [DATA_ACCESS.md](DATA_ACCESS.md) for reviewer runs that should not require local image downloads.
 - Confirm the submission is a replication of work by non-collaborating authors, as required by ReScience C.
 

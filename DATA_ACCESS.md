@@ -9,9 +9,11 @@ The full image set is large, so reviewers should not need to download it to a pe
 
 ## Option 1: Kaggle Notebook
 
-Create a Kaggle Notebook, add the Kaggle dataset `nih-chest-xrays/data` as an input dataset, and upload or clone this repository into the notebook session.
+Create a Kaggle Notebook, add the Kaggle dataset `nih-chest-xrays/data` as an input dataset, and clone this repository into the notebook session.
 
-Kaggle mounts input datasets under `/kaggle/input/...`. The training scripts auto-detect common Kaggle mount paths, so this is usually enough:
+Kaggle mounts input datasets under `/kaggle/input/...`. The training scripts
+recursively locate `Data_Entry_2017.csv` under `/kaggle/input`, so this is
+usually enough:
 
 ```bash
 python scripts/dacnet.py --wandb_mode offline

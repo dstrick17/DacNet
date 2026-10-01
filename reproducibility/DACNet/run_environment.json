@@ -1,0 +1,29 @@
+{
+  "saved_at_utc": "2026-09-27T03:57:36.822531+00:00",
+  "git_commit": "286dc7ba4d72628eb02d0c30c5dfd477b5ac8962",
+  "git_branch": "revision/chexnet-reproduction",
+  "python": "3.12.13",
+  "torch": "2.10.0+cu128",
+  "torchvision": "0.25.0+cu128",
+  "cuda_available": true,
+  "gpu": "Tesla T4",
+  "run_id": "l7x0gzg5",
+  "training_command": [
+    "/usr/bin/python3",
+    "scripts/dacnet.py",
+    "--data_dir",
+    "/kaggle/input/datasets/nih-chest-xrays/data",
+    "--epochs",
+    "25",
+    "--batch_size",
+    "8",
+    "--num_workers",
+    "4",
+    "--weights",
+    "imagenet",
+    "--wandb_mode",
+    "disabled",
+    "--output_dir",
+    "/kaggle/working/dacnet-full"
+  ]
+}
