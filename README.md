@@ -4,8 +4,6 @@ This repository contains:
 1. a **reproduction** of the CheXNet DenseNet-121 model on the NIH ChestX-ray14 dataset, and  
 2. an **extension (DACNet)** designed to improve performance under class imbalance.
 
-It also includes a Vision Transformer baseline and a Streamlit demo for inference.
-
 ---
 
 ## Reproduction Scope
@@ -19,7 +17,8 @@ Rajpurkar et al., 2017 (arXiv:1711.05225)
 - DenseNet-121 architecture
 - Multi-label classification (14 thoracic diseases)
 - Patient-level dataset splitting
-- Evaluation using AUC-ROC and F1 score
+- AUROC evaluation as the primary reproduction metric
+- F1 evaluation as a secondary analysis
 
 ### Known differences from the original work
 - No access to the original **expert-labeled test set**
@@ -33,15 +32,15 @@ Rajpurkar et al., 2017 (arXiv:1711.05225)
 DacNet/
 ├── scripts/
 │   ├── replicate_chexnet.py
-│   ├── dacnet.py
-│   ├── vit_transformer.py
-├── XRay_app/
+│   └── dacnet.py
 ├── reproducibility/
 │   ├── DACNet/
-│   ├── replicate_chexnet/
-│   └── vit_transformer/
-├── project_EDA.ipynb
+│   └── replicate_chexnet/
+├── paper/
+├── DATA_ACCESS.md
+├── reproduce.sh
 ├── requirements.txt
+└── requirements-kaggle.txt
 ```
 ---
 
@@ -83,45 +82,21 @@ export NIH_DATA_DIR=/path/to/nih_data
 
 You can also pass the path directly with `--data_dir`.
 
----
-
-## Reproducible Environment (Docker)
-
-We provide a Docker environment to improve reproducibility.
-
-### Build the container
+## Environment Setup
 
 ```bash
-docker build -t dacnet-env .
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### Run the container
-
-```bash
-docker run --gpus all -it --rm -v "$(pwd)":/workspace/DacNet dacnet-env
-```
-
-Notes:
-- Requires CUDA-compatible GPU  
-- ≥8GB VRAM recommended  
-- If no GPU, remove `--gpus all`  
-- The image starts in `/workspace/DacNet` with WandB in offline mode by default.
-
----
-
-## Quick Verification
-
-Before running full training, verify the setup:
+For a quick local environment check, run:
 
 ```bash
 bash reproduce.sh
 ```
 
-This checks:
-- Python environment setup
-- dependency installation
-- app utility imports
-If this step fails, resolve the Python environment before proceeding to full training.
 
 ### Kaggle GPU Smoke Test
 
@@ -136,7 +111,7 @@ python scripts/dacnet.py \
   --num_workers 2 \
   --max_train_batches 5 \
   --max_eval_batches 2 \
-  --wandb_mode offline
+  --wandb_mode disabled
 ```
 
 This checks the Kaggle dataset mount, GPU execution, training loop, evaluation loop, checkpointing, and `models/<run_id>/test_results.json` output without running a full training job.
@@ -144,7 +119,7 @@ This checks the Kaggle dataset mount, GPU execution, training loop, evaluation l
 ---
 ## Running the Models
 
-Once inside the Docker container, you can execute the training scripts.
+After installing the dependencies, you can execute the training scripts.
  
 ### 1. Reproduction Baseline (CheXNet)
 
@@ -175,17 +150,13 @@ comparison because that expert-labeled test set is not publicly available.
 python scripts/dacnet.py --data_dir "$NIH_DATA_DIR"
 ```
 
-### 3. Vision Transformer
-
-```bash
-python scripts/vit_transformer.py --data_dir "$NIH_DATA_DIR"
-```
-
 If you encounter CUDA memory errors, reduce batch size in the scripts.
 
 ---
- 
-Evaluation results (AUC and F1) print to the console and are saved as `models/<run_id>/test_results.json`. If WandB is configured, pass `--wandb_mode online`; otherwise scripts default to offline mode. The best model checkpoint is saved in the same `models/<run_id>` folder.
+
+Evaluation results print to the console and are saved in
+`models/<run_id>/test_results.json`. The best checkpoint is saved in the same
+run directory.
 
 Useful reproducibility options:
 
@@ -195,7 +166,7 @@ python scripts/dacnet.py \
   --epochs 25 \
   --batch_size 8 \
   --output_dir models \
-  --wandb_mode offline
+  --wandb_mode disabled
 ```
 
 ---
@@ -218,13 +189,6 @@ Improved CNN designed for class imbalance.
 - Focal Loss  
 - Per-class threshold tuning  
 - Improved F1 performance  
-
-### vit_transformer.py (ViT)
-Transformer-based baseline.
-- ViT-Base architecture  
-- Multi-label classification  
-- Compared against CNN approaches  
-
 ---
 
 ## Verified Results
@@ -282,39 +246,14 @@ At a fixed threshold of 0.5, the CheXNet reproduction has a macro F1 of
 0.1271. The validation-thresholded values above are the appropriate comparison
 with DACNet's per-pathology threshold evaluation.
 
-The Vision Transformer remains a supplementary experiment. Its historical
-results are not included in this verified comparison because it has not been
-rerun on the shared final split.
-
-
----
-## Test-Images
-Folder that contains labeled chest X-ray PNG files for the user to easily download and test on the Hugging Face Streamlit app.
-
----
-## project_EDA.ipynb
-
-Jupyter Notebook that conducts Exploratory Data Analysis such as how many different diseases are present in the dataset and the proportion of each disease in the dataset.
 ---
 
 ## Methodology
 - **Data Preprocessing:** Resize, normalize, and augment X-ray images
-- **Model Selection:** CNN and Transformer variants
+- **Model Selection:** CheXNet reproduction and DACNet extension
 - **Training & Validation:** Patient-level splits, loss monitoring
 - **Evaluation:** Per-class AUC-ROC and F1 metrics
 - **Comparison:** Benchmarks against original CheXNet results
-
----
-
-## Demo
-
-Try the model here:  
-https://huggingface.co/spaces/cfgpp/DACNet
-
-Features:
-- image upload  
-- multi-label prediction  
-- Grad-CAM visualization  
 
 ---
 
@@ -328,24 +267,18 @@ Features:
 
 ---
 
-## ReScience C Readiness
+## Manuscript
 
-This repository is public and includes open-source code, Docker setup, reproducibility metadata, result tables, figures, and reviewer-facing run commands. Before submission, complete the remaining journal artifacts:
-
-- Add the ReScience C article source and metadata using the journal template.
-- Archive the reviewed code release on Zenodo after acceptance to obtain a DOI.
-- Attach the final checkpoints and complete run bundles to the reviewed GitHub release.
-- Use the Kaggle/cloud data access path in [DATA_ACCESS.md](DATA_ACCESS.md) for reviewer runs that should not require local image downloads.
-- Confirm the submission is a replication of work by non-collaborating authors, as required by ReScience C.
+The ReScience C manuscript source and compiled PDF are available in
+[`paper/`](paper/).
 
 ---
 
 ## Citation
 
-If you use this repository:
-
-An Open-Source Reproduction and Enhancement of CheXNet for Chest X-ray Disease Classification  
-https://arxiv.org/abs/2505.06646
+Daniel Strick, Carlos Garcia Padilla, Anthony Huang, and Thomas Gardos.
+*An Open-Source Reproduction and Enhancement of CheXNet for Chest X-ray
+Disease Classification.* https://arxiv.org/abs/2505.06646
 
 ---
 

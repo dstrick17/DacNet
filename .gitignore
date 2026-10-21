@@ -5,6 +5,9 @@
 /venv/
 /.venv/
 
+# Ignore local editor settings
+/.vscode/
+
 # Ignore model outputs and logs
 /models/
 /models/old_models/

@@ -16,13 +16,13 @@ recursively locate `Data_Entry_2017.csv` under `/kaggle/input`, so this is
 usually enough:
 
 ```bash
-python scripts/dacnet.py --wandb_mode offline
+python scripts/dacnet.py --wandb_mode disabled
 ```
 
 If Kaggle mounts the dataset under a different folder, pass the detected folder explicitly:
 
 ```bash
-python scripts/dacnet.py --data_dir /kaggle/input/data --wandb_mode offline
+python scripts/dacnet.py --data_dir /kaggle/input/data --wandb_mode disabled
 ```
 
 The directory passed to `--data_dir` must contain `Data_Entry_2017.csv` and the `images_001` through `images_012` folders.
@@ -36,7 +36,7 @@ Example Kaggle API command in a cloud runtime:
 ```bash
 kaggle datasets download -d nih-chest-xrays/data -p /workspace/nih_data --unzip
 export NIH_DATA_DIR=/workspace/nih_data
-python scripts/dacnet.py --wandb_mode offline
+python scripts/dacnet.py --wandb_mode disabled
 ```
 
 ## Kaggle Python Environment
@@ -52,7 +52,7 @@ python scripts/dacnet.py \
   --num_workers 2 \
   --max_train_batches 5 \
   --max_eval_batches 2 \
-  --wandb_mode offline
+  --wandb_mode disabled
 ```
 
 ## Not Recommended: HTTP Streaming During Training
