@@ -18,5 +18,5 @@ expert-labeled pneumonia comparison because that test set is not public.
 
 `patient_splits.csv` is the exact patient assignment shared by the CheXNet and
 DACNet runs. `threshold_run_environment.json` records the threshold-evaluation
-environment and exact command. The checkpoint is distributed as a release
-asset rather than tracked in Git history.
+environment and exact command. The checkpoint is not tracked in Git history;
+reviewers can regenerate it by running the documented training command.

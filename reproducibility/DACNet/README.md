@@ -12,4 +12,5 @@ This directory records the final DACNet run on the shared patient split in
 `test_results.json` contains the per-pathology metrics, validation-selected
 thresholds, split counts, and training configuration. `run_environment.json`
 records the software, hardware, command, and exact Git commit. The checkpoint
-is distributed as a release asset rather than tracked in Git history.
+is not tracked in Git history; reviewers can regenerate it by running the
+documented training command.
